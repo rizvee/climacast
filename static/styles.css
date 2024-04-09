@@ -1,0 +1,101 @@
+/* styles.css */
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: #f0f0f0;
+    margin: 0;
+    padding: 0;
+}
+
+.container {
+    max-width: 800px;
+    margin: 50px auto;
+    padding: 20px;
+    background-color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+}
+
+h1 {
+    text-align: center;
+    color: #007bff;
+    margin-bottom: 20px;
+}
+
+form {
+    text-align: center;
+}
+
+input[type="text"] {
+    padding: 12px;
+    width: 70%;
+    border: 2px solid #007bff;
+    border-radius: 6px;
+    margin-right: 10px;
+    box-sizing: border-box;
+}
+
+button {
+    padding: 12px 24px;
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
+.weather-info {
+    background-color: #f9f9f9;
+    padding: 20px;
+    border-radius: 6px;
+    margin-top: 20px;
+}
+
+.weather-info h2 {
+    color: #333;
+    margin-top: 0;
+}
+
+/* Map container */
+#map {
+    height: 300px;
+    border-radius: 6px;
+    margin-top: 20px;
+}
+
+/* Popup styling */
+.leaflet-popup-content-wrapper {
+    background-color: #fff;
+    color: #333;
+    padding: 10px;
+    border-radius: 6px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+.leaflet-popup-content {
+    margin: 0;
+}
+
+.leaflet-popup-tip-container {
+    display: none;
+}
+
+.error-message {
+    color: red;
+    text-align: center;
+}
+
+/* Responsive design */
+@media screen and (max-width: 768px) {
+    .container {
+        max-width: 90%;
+    }
+    input[type="text"] {
+        width: 100%;
+        margin-right: 0;
+    }
+}

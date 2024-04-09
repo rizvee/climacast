@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClimaCast</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" integrity="sha512-V27WQN/u7FURiPrj4fApCyO5Rj7D4sQxJBgNdc/AFY3i7e1tzZ7KjVrlm+wZ+ukUEH/SLJvpSjT9ltDRP9lPKw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <!-- Leaflet.js CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome to ClimaCast! <i class="fas fa-sun"></i></h1>
+        <form id="search-form" action="{{ url_for('weather') }}" method="GET">
+            <input type="text" id="city-input" name="city" placeholder="Enter city name" required>
+            <button type="submit">Get Weather <i class="fas fa-search"></i></button>
+        </form>
+        {% if weather_info %}
+        <div class="weather-info">
+            <h2>{{ weather_info.city }}</h2>
+            <p>Temperature: {{ weather_info.temperature }}°C</p>
+            <p>Description: {{ weather_info.description }}</p>
+            <p>Humidity: {{ weather_info.humidity }}%</p>
+            <p>Pressure: {{ weather_info.pressure }} hPa</p>
+            <p>Wind Speed: {{ weather_info.wind_speed }} m/s</p>
+            <div id="map"></div> <!-- Map container -->
+        </div>
+        {% endif %}
+        {% if error_message %}
+        <p class="error-message">{{ error_message }}</p>
+        {% endif %}
+    </div>
+
+    <!-- Leaflet.js -->
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <!-- Your custom JavaScript -->
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
