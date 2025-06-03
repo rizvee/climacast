@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ClimaCast</title>
-    
+
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,7 +19,7 @@
 <body>
     <div class="container">
         <h1 id="app-title">Welcome to ClimaCast! <i class="fas fa-sun"></i></h1>
-        <form id="search-form"> 
+        <form id="search-form">
             <input type="text" id="city-input" name="city" placeholder="Enter city name or 'geolocation'" required>
             <button type="submit">Get Weather <i class="fas fa-search"></i></button>
         </form>
@@ -28,7 +28,7 @@
             <div class="weather-main-info">
                 <div class="weather-text">
                     <h2 id="city-name"></h2>
-                    <p class="temperature-details"><span id="temperature"></span></p> 
+                    <p class="temperature-details"><span id="temperature"></span></p>
                     <p id="description"></p>
                 </div>
                 <div class="main-weather-icon-container">
@@ -42,12 +42,12 @@
             </div>
         </div>
 
-        <div id="error-message-js" class="error-message" style="display: none;"></div> 
+        <div id="error-message-js" class="error-message" style="display: none;"></div>
 
         <div id="map" class="card"></div>
 
         <!-- Perfect Day Planner Section -->
-        <div class="perfect-day-planner card"> 
+        <div class="perfect-day-planner card">
             <h2>Activity Forecaster</h2>
             <p class="subtle-note">Select activities to see if current conditions in the chosen city are favorable.</p>
             <div id="activity-selector" class="activity-options">
@@ -59,7 +59,7 @@
                 <div class="activity-option"> <input type="checkbox" id="activity-beach_day" name="activity" value="beach_day"> <label for="activity-beach_day">Beach Day</label> </div>
                 <div class="activity-option"> <input type="checkbox" id="activity-hiking" name="activity" value="hiking"> <label for="activity-hiking">Hiking</label> </div>
             </div>
-            <button id="get-activity-forecast-btn">Get Activity Advice</button> 
+            <button id="get-activity-forecast-btn">Get Activity Advice</button>
             <div id="activity-forecast-results" class="forecast-results-container"></div>
             <div id="activity-forecast-error" class="error-message" style="display: none;"></div>
         </div>
@@ -116,10 +116,10 @@
 
     <!-- Health Advice Modal -->
     <div id="health-advice-modal" class="modal" style="display: none;">
-        <div class="modal-content card"> 
+        <div class="modal-content card">
             <span class="modal-close-btn">&times;</span>
             <h3 id="modal-title">Health & Wellness Advice</h3>
-            <div id="modal-city-summary" class="current-weather-summary-note" style="text-align: center; margin-bottom:15px;"></div> 
+            <div id="modal-city-summary" class="current-weather-summary-note" style="text-align: center; margin-bottom:15px;"></div>
             <div id="modal-body" class="modal-text-content"></div>
             <p id="modal-disclaimer" class="subtle-note forecast-source-note"></p>
         </div>

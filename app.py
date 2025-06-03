@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, jsonify
 import requests
 import os
-from datetime import datetime, timedelta 
+from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
@@ -49,7 +49,7 @@ def get_weather():
         return jsonify({'error': 'City parameter is required.'}), 400
     params = {'q': city, 'appid': api_key, 'units': 'metric'}
     try:
-        response = requests.get(OWM_BASE_URL, params=params) 
+        response = requests.get(OWM_BASE_URL, params=params)
         response.raise_for_status()
         data = response.json()
 
@@ -70,9 +70,9 @@ def get_weather():
             elif status_code == 429: error_message = 'Rate limit exceeded. Please try again later.'
             app.logger.warning(f"OpenWeatherMap API error for city '{city}': {data.get('message')} (status: {status_code})")
             return jsonify({'error': error_message}), status_code
-        
+
         weather_info = {
-            'city': data.get('name', city), 
+            'city': data.get('name', city),
             'temperature': data['main']['temp'],
             'description': data['weather'][0]['description'],
             'weather_main': data['weather'][0]['main'],
@@ -94,10 +94,10 @@ def get_weather():
         return jsonify({'error': error_message}), status_code
     except requests.exceptions.Timeout:
         app.logger.error(f"Timeout when calling OpenWeatherMap for city '{city}'.") # Added logging for timeout
-        return jsonify({'error': 'The request to the weather service timed out. Please try again later.'}), 504 
+        return jsonify({'error': 'The request to the weather service timed out. Please try again later.'}), 504
     except requests.exceptions.RequestException as e: # Added logging for general request exception
         app.logger.error(f"RequestException when calling OpenWeatherMap for city '{city}': {e}")
-        return jsonify({'error': 'Could not connect to the weather service. Please check your network or try again later.'}), 503 
+        return jsonify({'error': 'Could not connect to the weather service. Please check your network or try again later.'}), 503
     except Exception as e:
         app.logger.error(f"An unexpected error occurred in /api/weather for city '{city}': {e}", exc_info=True)
         return jsonify({'error': 'An unexpected server error occurred. Please try again later.'}), 500
@@ -140,12 +140,12 @@ def perfect_day_forecast():
     api_key = os.getenv('OPENWEATHERMAP_API_KEY')
     if not api_key: app.logger.error("OPENWEATHERMAP_API_KEY not set for perfect_day_forecast."); return jsonify({'error': 'API key not configured. Please contact administrator.'}), 500
     activity_keys_raw = [key.strip() for key in activities_str.split(',')]
-    activity_keys = [key for key in activity_keys_raw if key] 
+    activity_keys = [key for key in activity_keys_raw if key]
     if not activity_keys: return jsonify({"error": "No valid activities specified."}), 400
     params = {'q': city, 'appid': api_key, 'units': 'metric'}
     try:
         response = requests.get(OWM_BASE_URL, params=params)
-        response.raise_for_status() 
+        response.raise_for_status()
         data = response.json()
         if 'weather' not in data or not data['weather'] or 'main' not in data or 'wind' not in data or 'coord' not in data: # Added coord check
             app.logger.error(f"Malformed weather data for city '{city}' in perfect_day_forecast. Data: {data}")
@@ -159,7 +159,7 @@ def perfect_day_forecast():
             app.logger.warning(f"OpenWeatherMap API error for city '{city}' (perfect_day_forecast): {data.get('message')} (status: {status_code})")
             return jsonify({'error': error_message}), status_code
         current_weather_data = {
-            'temperature': data['main']['temp'], 'wind_speed_ms': data['wind']['speed'], 
+            'temperature': data['main']['temp'], 'wind_speed_ms': data['wind']['speed'],
             'wind_speed_kmh': round(data['wind']['speed'] * 3.6, 1), 'humidity': data['main']['humidity'],
             'weather_main': data['weather'][0]['main'], 'description': data['weather'][0]['description']
         }
@@ -201,16 +201,16 @@ def check_health_condition_triggers(concern_triggers, current_weather):
     if "high_humidity_thresh_percent" in concern_triggers and humidity > concern_triggers["high_humidity_thresh_percent"]:
         if "temp_thresh_for_humidity_check_c" in concern_triggers:
             if temp_c > concern_triggers["temp_thresh_for_humidity_check_c"]: return True
-        elif "low_temp_c" in concern_triggers: 
+        elif "low_temp_c" in concern_triggers:
              if temp_c < concern_triggers["low_temp_c"]: return True
-        else: return True 
+        else: return True
     if "recent_heavy_rain" in concern_triggers and concern_triggers["recent_heavy_rain"]:
         if "rain" in weather_main:
-            if "heavy" in weather_description or "extreme" in weather_description or "shower" in weather_description: 
+            if "heavy" in weather_description or "extreme" in weather_description or "shower" in weather_description:
                 if "moderate_temp_c" in concern_triggers:
                     min_t, max_t = concern_triggers["moderate_temp_c"]
-                    if not (min_t <= temp_c <= max_t): return False 
-                return True 
+                    if not (min_t <= temp_c <= max_t): return False
+                return True
     return False
 
 @app.route('/api/health_weather_advice', methods=['GET'])
@@ -299,7 +299,7 @@ def weather_history_on_this_day():
                 raise ValueError("Open-Meteo: Expected daily data arrays not found or empty.")
             if dates[0] != historical_date_to_fetch: app.logger.warning(f"Open-Meteo date mismatch for {historical_date_to_fetch}. Got {dates[0]}")
             historical_results.append({
-                "year": target_hist_year, "date": historical_date_to_fetch, 
+                "year": target_hist_year, "date": historical_date_to_fetch,
                 "max_temp": max_temps[0] if max_temps[0] is not None else "N/A",
                 "min_temp": min_temps[0] if min_temps[0] is not None else "N/A",
                 "precipitation": precip_sums[0] if precip_sums[0] is not None else "N/A"
