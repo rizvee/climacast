@@ -50,10 +50,35 @@ function displayAppFeedback(element, message, type) {
     }, 3000);
 }
 
+// --- Moved showLoadingState here ---
+function showLoadingState() {
+    const weatherInfoCard = document.querySelector('.weather-info-js');
+    const errorJs = document.getElementById('error-message-js');
+    if(errorJs) {
+        errorJs.textContent = '';
+        errorJs.style.display = 'none'; 
+    }
+    if (weatherInfoCard) {
+        weatherInfoCard.classList.add('weather-data-loading');
+    }
+    const cityNameEl = document.getElementById('city-name');
+    if(cityNameEl) cityNameEl.textContent = ''; 
+    const tempEl = document.getElementById('temperature');
+    if(tempEl) tempEl.textContent = '';
+    const descEl = document.getElementById('description');
+    if(descEl) descEl.textContent = '';
+    const humidityEl = document.getElementById('humidity');
+    if(humidityEl) humidityEl.textContent = '';
+    const pressureEl = document.getElementById('pressure');
+    if(pressureEl) pressureEl.textContent = '';
+    const windSpeedEl = document.getElementById('wind-speed');
+    if(windSpeedEl) windSpeedEl.textContent = '';
+    const weatherIconEl = document.getElementById('weather-icon');
+    if(weatherIconEl) weatherIconEl.className = 'fas'; 
+}
 
 function getWeatherIconClass(weatherId, weatherMain, description) { 
-    // Fallback to description if weatherId or weatherMain is not definitive
-    const desc = description.toLowerCase();
+    const desc = description ? description.toLowerCase() : '';
     weatherMain = weatherMain ? weatherMain.toLowerCase() : '';
 
     if (weatherId >= 200 && weatherId <= 232) return 'fa-bolt'; // Thunderstorm
@@ -68,18 +93,17 @@ function getWeatherIconClass(weatherId, weatherMain, description) {
     if (weatherId === 802) return 'fa-cloud'; // Scattered clouds
     if (weatherId === 803 || weatherId === 804) return 'fa-cloud-meatball'; // Broken/Overcast clouds
 
-    // Fallback based on weatherMain if ID is not specific enough or out of range
     if (weatherMain === 'thunderstorm') return 'fa-bolt';
     if (weatherMain === 'drizzle') return 'fa-cloud-rain';
     if (weatherMain === 'rain') return 'fa-cloud-showers-heavy';
     if (weatherMain === 'snow') return 'fa-snowflake';
     if (weatherMain === 'clear') return 'fa-sun';
     if (weatherMain === 'clouds') return 'fa-cloud';
-    if (desc.includes('smoke') || desc.includes('haze') || desc.includes('dust') || desc.includes('sand') || desc.includes('ash')) return 'fa-smog'; // More specific atmosphere
+    if (desc.includes('smoke') || desc.includes('haze') || desc.includes('dust') || desc.includes('sand') || desc.includes('ash')) return 'fa-smog';
     if (desc.includes('fog') || desc.includes('mist')) return 'fa-smog';
-    if (desc.includes('squall') || desc.includes('tornado')) return 'fa-wind'; // Extreme wind
+    if (desc.includes('squall') || desc.includes('tornado')) return 'fa-wind';
 
-    return 'fa-question-circle'; // Default/unknown
+    return 'fa-question-circle';
 }
 
 function updatePopup(weatherData) {
@@ -117,63 +141,61 @@ const getHistoryBtnEl = document.getElementById('get-history-btn');
 const historicalDisplayAreaEl = document.getElementById('historical-weather-display-area');
 const historyFeedbackMsgEl = document.getElementById('history-feedback-msg');
 
-
 function updateWeatherDisplay(weatherData) {
     const weatherInfoCard = document.querySelector('.weather-info-js');
     const weatherIconElement = document.getElementById('weather-icon');
     const determinedIconClass = getWeatherIconClass(weatherData.weather_id, weatherData.weather_main, weatherData.description);
-    if (weatherIconElement) weatherIconElement.className = 'fas ' + determinedIconClass;
+    if(weatherIconElement) weatherIconElement.className = 'fas ' + determinedIconClass; 
 
-    currentCityName = weatherData.city || '';
+    currentCityName = weatherData.city || ''; 
     currentLatitude = weatherData.latitude; 
     currentLongitude = weatherData.longitude; 
 
     const cityNameEl = document.getElementById('city-name');
-    if (cityNameEl) cityNameEl.textContent = currentCityName;
+    if (cityNameEl) cityNameEl.textContent = currentCityName; 
 
     if (predictionCityNameEl) predictionCityNameEl.textContent = currentCityName;
     if (maxTempPredictionInputEl) maxTempPredictionInputEl.disabled = !currentCityName;
     if (submitPredictionBtnEl) submitPredictionBtnEl.disabled = !currentCityName;
-
+    
     if (historyCityNameEl) historyCityNameEl.textContent = currentCityName;
     if (getHistoryBtnEl) getHistoryBtnEl.disabled = (!currentLatitude || !currentLongitude);
 
-
     const temp = weatherData.temperature !== undefined ? Math.round(weatherData.temperature) : '';
     const tempEl = document.getElementById('temperature');
-    if (tempEl) tempEl.textContent = temp;
+    if (tempEl) tempEl.textContent = temp; 
     
     const descEl = document.getElementById('description');
-    if (descEl) descEl.textContent = weatherData.description || '';
+    if(descEl) descEl.textContent = weatherData.description || '';
 
     const humidityEl = document.getElementById('humidity');
-    if (humidityEl) humidityEl.textContent = weatherData.humidity !== undefined ? weatherData.humidity : '';
+    if(humidityEl) humidityEl.textContent = weatherData.humidity !== undefined ? weatherData.humidity : '';
 
     const pressureEl = document.getElementById('pressure');
-    if (pressureEl) pressureEl.textContent = weatherData.pressure !== undefined ? weatherData.pressure : '';
+    if(pressureEl) pressureEl.textContent = weatherData.pressure !== undefined ? weatherData.pressure : '';
 
     const windSpeedEl = document.getElementById('wind-speed');
-    if (windSpeedEl) windSpeedEl.textContent = weatherData.wind_speed !== undefined ? weatherData.wind_speed : '';
+    if(windSpeedEl) windSpeedEl.textContent = weatherData.wind_speed !== undefined ? weatherData.wind_speed : '';
 
     if (weatherInfoCard) { weatherInfoCard.classList.remove('weather-data-loading'); }
     if (activityResultsDiv) activityResultsDiv.innerHTML = '';
     if (activityErrorDiv) { activityErrorDiv.textContent = ''; activityErrorDiv.style.display = 'none'; }
     if (healthErrorDiv) { healthErrorDiv.textContent = ''; healthErrorDiv.style.display = 'none'; }
-    if (healthAdviceModal && healthAdviceModal.classList.contains('show')) { healthAdviceModal.classList.remove('show'); } // Hide if open
-    if (predictionFeedbackMsgEl) { predictionFeedbackMsgEl.textContent = ''; predictionFeedbackMsgEl.className = 'feedback-message'; predictionFeedbackMsgEl.style.display = 'none'; }
-    if (historicalDisplayAreaEl) historicalDisplayAreaEl.innerHTML = ''; // Clear history display
-    if (historyFeedbackMsgEl) { historyFeedbackMsgEl.textContent = ''; historyFeedbackMsgEl.className = 'feedback-message'; historyFeedbackMsgEl.style.display = 'none';}
+    if (healthAdviceModal && healthAdviceModal.classList.contains('show')) { healthAdviceModal.classList.remove('show'); } 
+    if (predictionFeedbackMsgEl) { displayAppFeedback(predictionFeedbackMsgEl, '', 'clear'); } 
+    if (historicalDisplayAreaEl) historicalDisplayAreaEl.innerHTML = ''; 
+    if (historyFeedbackMsgEl) { displayAppFeedback(historyFeedbackMsgEl, '', 'clear'); }
 }
 
 function displayError(message) {
     const errorDiv = document.getElementById('error-message-js');
     const weatherInfoCard = document.querySelector('.weather-info-js');
     if (errorDiv) {
-      errorDiv.style.display = 'block';
+      errorDiv.style.display = 'block'; 
       errorDiv.textContent = message || "An unexpected error occurred. Please try again.";
     }
-
-    currentCityName = '';
+    
+    currentCityName = ''; 
     currentLatitude = null;
     currentLongitude = null;
 
@@ -183,38 +205,36 @@ function displayError(message) {
         if (el) el.textContent = '';
     });
     const weatherIconEl = document.getElementById('weather-icon');
-    if (weatherIconEl) weatherIconEl.className = 'fas';
-
+    if (weatherIconEl) weatherIconEl.className = 'fas'; 
 
     if (predictionCityNameEl) predictionCityNameEl.textContent = 'No city selected';
     if (maxTempPredictionInputEl) maxTempPredictionInputEl.disabled = true;
     if (submitPredictionBtnEl) submitPredictionBtnEl.disabled = true;
-    if (predictionFeedbackMsgEl) { displayAppFeedback(predictionFeedbackMsgEl, '', 'clear'); } // Clear feedback
-
+    if (predictionFeedbackMsgEl) { displayAppFeedback(predictionFeedbackMsgEl, '', 'clear'); }
+    
     if (historyCityNameEl) historyCityNameEl.textContent = 'No city selected';
     if (getHistoryBtnEl) getHistoryBtnEl.disabled = true;
     if (historicalDisplayAreaEl) historicalDisplayAreaEl.innerHTML = '';
-    if (historyFeedbackMsgEl) { displayAppFeedback(historyFeedbackMsgEl, '', 'clear'); } // Clear feedback
+    if (historyFeedbackMsgEl) { displayAppFeedback(historyFeedbackMsgEl, '', 'clear'); }
 
     if (weatherInfoCard) { weatherInfoCard.classList.remove('weather-data-loading'); }
     if (activityResultsDiv) activityResultsDiv.innerHTML = '';
     if (activityErrorDiv) { activityErrorDiv.textContent = ''; activityErrorDiv.style.display = 'none'; }
     if (healthErrorDiv) { healthErrorDiv.textContent = ''; healthErrorDiv.style.display = 'none'; }
-    if (healthAdviceModal && healthAdviceModal.classList.contains('show')) { healthAdviceModal.classList.remove('show'); } // Hide if open
+    if (healthAdviceModal && healthAdviceModal.classList.contains('show')) { healthAdviceModal.classList.remove('show'); } 
 }
 
 
 // --- Daily Prediction Challenge Logic ---
 function displayStoredPredictions() { 
     if (!predictionsListEl) return;
-    predictionsListEl.innerHTML = ''; // Clear current list
+    predictionsListEl.innerHTML = ''; 
     let predictions = JSON.parse(localStorage.getItem('weatherPredictions')) || [];
     if (predictions.length === 0) {
         predictionsListEl.innerHTML = '<p class="no-predictions-text">No predictions made yet. Make your first one!</p>';
         return;
     }
 
-    // Sort: Pending first, then by newest submission. Checked items also by newest submission.
     predictions.sort((a, b) => {
         if (a.status === 'Pending' && b.status !== 'Pending') return -1;
         if (a.status !== 'Pending' && b.status === 'Pending') return 1;
@@ -225,7 +245,7 @@ function displayStoredPredictions() {
     let needsStorageUpdate = false;
 
     predictions.forEach(prediction => {
-        if (prediction.date < today && prediction.status === 'Pending') { // Only check if date is in the past
+        if (prediction.date < today && prediction.status === 'Pending') { 
             prediction.actual_max_temp = parseFloat((prediction.predicted_max_temp - (Math.random() * 4 - 2)).toFixed(1));
             const diff = Math.abs(prediction.actual_max_temp - prediction.predicted_max_temp);
             if (diff === 0) prediction.points = 10;
@@ -245,7 +265,7 @@ function displayStoredPredictions() {
         if (prediction.status === 'Checked') {
             actualTempDisplay = `${prediction.actual_max_temp !== null ? prediction.actual_max_temp + '&deg;C' : 'N/A'}`;
         } else if (prediction.date < today && prediction.status === 'Pending') {
-            actualTempDisplay = 'Awaiting update...'; // Should have been checked above, but as a fallback
+            actualTempDisplay = 'Awaiting update...';
         }
 
         item.innerHTML = `
@@ -288,10 +308,11 @@ if (getHistoryBtnEl) {
         if (historicalDisplayAreaEl) historicalDisplayAreaEl.innerHTML = '<p class="loading-text">Fetching historical weather...</p>';
         this.disabled = true;
         this.textContent = 'Fetching...';
+        const button = this; // Store reference to button
 
         fetch(`/api/weather_history_on_this_day?latitude=${currentLatitude}&longitude=${currentLongitude}&current_date=${currentDateStr}`)
         .then(response => {
-            if (!response.ok) {
+            if (!response.ok) { 
                 return response.json().then(errData => {
                     throw new Error(errData.error || `HTTP error! Status: ${response.status}`);
                 }).catch(() => {
@@ -321,7 +342,7 @@ if (getHistoryBtnEl) {
                             <p>Precipitation: ${yearData.precipitation !== null && yearData.precipitation !== "N/A" ? yearData.precipitation + ' mm' : 'N/A'}</p>
                         `;
                     }
-
+                    
                     item.innerHTML = `
                         <div class="historical-item-title">
                             <h4>${yearData.year} <span class="historical-date">(${yearData.date})</span></h4>
@@ -329,11 +350,11 @@ if (getHistoryBtnEl) {
                         ${detailsHTML}
                     `;
                     if (historicalDisplayAreaEl) historicalDisplayAreaEl.appendChild(item);
-                    if (!yearData.error) contentRendered = true; // Count if actual data was rendered
+                    if (!yearData.error) contentRendered = true; 
                 });
-                if (!contentRendered && historicalDisplayAreaEl && !data.history.some(y => y.error)) { // if nothing rendered and it wasn't because all years had errors
+                if (!contentRendered && historicalDisplayAreaEl && !data.history.some(y => y.error)) { 
                      historicalDisplayAreaEl.innerHTML = '<p class="no-history-text">No historical data found for this date in the past 3 years.</p>';
-                } else if (!contentRendered && historicalDisplayAreaEl) { // All years had errors
+                } else if (!contentRendered && historicalDisplayAreaEl && data.history.every(y => y.error)) { // Check if ALL years had errors
                     historicalDisplayAreaEl.innerHTML = '<p class="no-history-text">Could not retrieve historical data for any of the past 3 years.</p>';
                 }
 
@@ -347,11 +368,9 @@ if (getHistoryBtnEl) {
             console.error("Fetch Weather History Error:", error);
         })
         .finally(() => {
-            // Check if the button still exists in DOM before trying to modify it
-            const btn = document.getElementById('get-history-btn'); 
-            if (btn) {
-                 btn.disabled = false;
-                 btn.textContent = 'Show Weather History';
+            if (button) { // Use stored button reference
+                 button.disabled = false;
+                 button.textContent = 'Show Weather History';
             }
         });
     });
@@ -369,46 +388,46 @@ document.addEventListener('DOMContentLoaded', () => {
     if (historyCityNameEl) historyCityNameEl.textContent = 'No city selected';
     if (getHistoryBtnEl) getHistoryBtnEl.disabled = true;
 
-    // Attempt to load map and other things that might depend on DOM elements being ready
-    // Map initialization is already at the top, which is fine as long as 'map' div exists.
-
-    displayStoredPredictions(); // Load and display any existing predictions
+    displayStoredPredictions(); 
 });
 
 
 // --- Event listener for general weather search form submission ---
-document.getElementById('search-form').addEventListener('submit', function(event) {
-    event.preventDefault();
-    var cityInput = document.getElementById('city-input').value.trim();
-    if (!cityInput) {
-        displayError("Please enter a city name or use 'geolocation'.");
-        return;
-    }
-    showLoadingState();
-    if (cityInput.toLowerCase() === 'geolocation') {
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(function(position) {
-                var latitude = position.coords.latitude;
-                var longitude = position.coords.longitude;
-                fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`)
-                .then(response => {
-                    if (!response.ok) throw new Error(`Nominatim reverse geocoding failed: ${response.status}`);
-                    return response.json();
-                })
-                .then(data => {
-                    const foundCity = data.address?.city || data.address?.town || data.address?.village;
-                    if (foundCity) {
-                        document.getElementById('city-input').value = foundCity;
-                        getWeather(foundCity);
-                    } else {
-                        displayError("Could not determine city from your location. Please enter manually.");
-                    }
-                })
-                .catch(error => { displayError("Error getting city name from location. Please try entering manually."); console.error(error); });
-            }, function(geoError) { displayError(`Geolocation error: ${geoError.message}. Please enter city manually.`); });
-        } else { displayError("Geolocation is not supported by this browser. Please enter city manually."); }
-    } else { getWeather(cityInput); }
-});
+const searchForm = document.getElementById('search-form');
+if (searchForm) {
+    searchForm.addEventListener('submit', function(event) {
+        event.preventDefault(); 
+        var cityInput = document.getElementById('city-input').value.trim();
+        if (!cityInput) {
+            displayError("Please enter a city name or use 'geolocation'.");
+            return;
+        }
+        showLoadingState(); 
+        if (cityInput.toLowerCase() === 'geolocation') {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    var latitude = position.coords.latitude;
+                    var longitude = position.coords.longitude;
+                    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`)
+                    .then(response => {
+                        if (!response.ok) throw new Error(`Nominatim reverse geocoding failed: ${response.status}`);
+                        return response.json();
+                    })
+                    .then(data => {
+                        const foundCity = data.address?.city || data.address?.town || data.address?.village;
+                        if (foundCity) {
+                            document.getElementById('city-input').value = foundCity;
+                            getWeather(foundCity);
+                        } else {
+                            displayError("Could not determine city from your location. Please enter manually.");
+                        }
+                    })
+                    .catch(error => { displayError("Error getting city name from location. Please try entering manually."); console.error(error); });
+                }, function(geoError) { displayError(`Geolocation error: ${geoError.message}. Please enter city manually.`); });
+            } else { displayError("Geolocation is not supported by this browser. Please enter city manually."); }
+        } else { getWeather(cityInput); }
+    });
+}
 
 function getWeather(city) {
     fetch(`/api/weather?city=${encodeURIComponent(city)}`)
@@ -424,23 +443,21 @@ function getWeather(city) {
         
         updateWeatherDisplay(weatherData);
 
-        // Fetch coordinates for map AFTER main weather data is displayed & lat/lon stored if available from /api/weather
         if (weatherData.latitude && weatherData.longitude) {
              map.setView([weatherData.latitude, weatherData.longitude], 10);
              marker.setLatLng([weatherData.latitude, weatherData.longitude]);
              updatePopup(weatherData);
         } else {
-            // Fallback to Nominatim if /api/weather didn't provide coordinates
             fetch(`https://nominatim.openstreetmap.org/search?city=${encodeURIComponent(city)}&format=json&limit=1`)
             .then(response => { if (!response.ok) throw new Error(`Nominatim search failed: ${response.status}`); return response.json(); })
             .then(geoData => {
                 if (geoData && geoData.length > 0) {
                     var lat = parseFloat(geoData[0].lat); var lon = parseFloat(geoData[0].lon);
                     map.setView([lat, lon], 10); marker.setLatLng([lat, lon]);
-                    updatePopup(weatherData); // Update popup with weather data, map is now centered
+                    updatePopup(weatherData); 
                 } else {
                     console.warn(`Could not find coordinates for city: ${city} via Nominatim.`);
-                    updatePopup(weatherData); // Still show popup, just map might not be centered
+                    updatePopup(weatherData); 
                 }
             })
             .catch(error => { console.error('Nominatim API error:', error); updatePopup(weatherData); });
@@ -467,6 +484,9 @@ if (activityButton) {
         }
         const selectedActivitiesString = selectedActivities.join(',');
         if (activityResultsDiv) activityResultsDiv.innerHTML = '<p class="loading-text">Fetching advice...</p>';
+        const button = this;
+        button.disabled = true;
+        button.textContent = 'Fetching Advice...';
         
         fetch(`/api/perfect_day_forecast?city=${encodeURIComponent(currentCityName)}&activities=${selectedActivitiesString}`)
         .then(response => {
@@ -523,6 +543,12 @@ if (activityButton) {
                 activityErrorDiv.style.display = 'block'; 
             }
             console.error("Activity Forecast Fetch Error:", error);
+        })
+        .finally(() => {
+            if(button) {
+                button.disabled = false;
+                button.textContent = 'Get Activity Advice';
+            }
         });
     });
 }
