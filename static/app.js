@@ -6,7 +6,7 @@ let currentLatitude = null;
 let currentLongitude = null;
 
 // Initialize Leaflet map and set default view
-var map = L.map('map').setView([0, 0], 2); 
+var map = L.map('map').setView([0, 0], 2);
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
     subdomains: 'abcd', maxZoom: 19
@@ -46,7 +46,7 @@ function displayAppFeedback(element, message, type) {
             if (!element.classList.contains('show')) {
                  element.style.display = 'none';
             }
-        }, 500); 
+        }, 500);
     }, 3000);
 }
 
@@ -80,23 +80,23 @@ function updateWeatherDisplay(weatherData) {
     const weatherInfoCard = document.querySelector('.weather-info-js');
     const weatherIconElement = document.getElementById('weather-icon');
     const determinedIconClass = getWeatherIconClass(weatherData.weather_id, weatherData.weather_main, weatherData.description);
-    weatherIconElement.className = 'fas ' + determinedIconClass; 
+    weatherIconElement.className = 'fas ' + determinedIconClass;
 
-    currentCityName = weatherData.city || ''; 
+    currentCityName = weatherData.city || '';
     currentLatitude = weatherData.latitude; // Assuming 'latitude' key from backend
     currentLongitude = weatherData.longitude; // Assuming 'longitude' key from backend
 
-    document.getElementById('city-name').textContent = currentCityName; 
+    document.getElementById('city-name').textContent = currentCityName;
     if (predictionCityNameEl) predictionCityNameEl.textContent = currentCityName;
     if (maxTempPredictionInputEl) maxTempPredictionInputEl.disabled = false;
     if (submitPredictionBtnEl) submitPredictionBtnEl.disabled = false;
-    
+
     if (historyCityNameEl) historyCityNameEl.textContent = currentCityName;
     if (getHistoryBtnEl) getHistoryBtnEl.disabled = (!currentLatitude || !currentLongitude);
 
 
     const temp = weatherData.temperature !== undefined ? Math.round(weatherData.temperature) : '';
-    document.getElementById('temperature').textContent = temp; 
+    document.getElementById('temperature').textContent = temp;
     document.getElementById('description').textContent = weatherData.description || '';
     document.getElementById('humidity').textContent = weatherData.humidity !== undefined ? weatherData.humidity : '';
     document.getElementById('pressure').textContent = weatherData.pressure !== undefined ? weatherData.pressure : '';
@@ -115,10 +115,10 @@ function updateWeatherDisplay(weatherData) {
 function displayError(message) {
     const errorDiv = document.getElementById('error-message-js');
     const weatherInfoCard = document.querySelector('.weather-info-js');
-    errorDiv.style.display = 'block'; 
+    errorDiv.style.display = 'block';
     errorDiv.textContent = message || "An unexpected error occurred. Please try again.";
-    
-    currentCityName = ''; 
+
+    currentCityName = '';
     currentLatitude = null;
     currentLongitude = null;
 
@@ -129,14 +129,14 @@ function displayError(message) {
     document.getElementById('humidity').textContent = '';
     document.getElementById('pressure').textContent = '';
     document.getElementById('wind-speed').textContent = '';
-    document.getElementById('weather-icon').className = 'fas'; 
+    document.getElementById('weather-icon').className = 'fas';
 
 
     if (predictionCityNameEl) predictionCityNameEl.textContent = 'No city selected';
     if (maxTempPredictionInputEl) maxTempPredictionInputEl.disabled = true;
     if (submitPredictionBtnEl) submitPredictionBtnEl.disabled = true;
     if (predictionFeedbackMsgEl) { predictionFeedbackMsgEl.textContent = ''; predictionFeedbackMsgEl.className = 'feedback-message'; predictionFeedbackMsgEl.style.display = 'none'; }
-    
+
     if (historyCityNameEl) historyCityNameEl.textContent = 'No city selected';
     if (getHistoryBtnEl) getHistoryBtnEl.disabled = true;
     if (historicalDisplayAreaEl) historicalDisplayAreaEl.innerHTML = '';
@@ -173,14 +173,14 @@ if (getHistoryBtnEl) {
             historyFeedbackMsgEl.className = 'feedback-message'; // Reset
             historyFeedbackMsgEl.style.display = 'none';
         }
-        
+
         if (historicalDisplayAreaEl) historicalDisplayAreaEl.innerHTML = '<p class="loading-text">Fetching historical weather...</p>';
         this.disabled = true;
         this.textContent = 'Fetching...';
 
         fetch(`/api/weather_history_on_this_day?latitude=${currentLatitude}&longitude=${currentLongitude}&current_date=${currentDateStr}`)
         .then(response => {
-            if (!response.ok) { 
+            if (!response.ok) {
                 // Try to parse error from backend, then fall back to status text
                 return response.json().then(errData => {
                     throw new Error(errData.error || `HTTP error! Status: ${response.status}`);
@@ -211,7 +211,7 @@ if (getHistoryBtnEl) {
                             <p>Precipitation: ${yearData.precipitation !== null && yearData.precipitation !== "N/A" ? yearData.precipitation + ' mm' : 'N/A'}</p>
                         `;
                     }
-                    
+
                     item.innerHTML = `
                         <div class="historical-item-title">
                             <h4>${yearData.year} <span class="historical-date">(${yearData.date})</span></h4>
@@ -248,12 +248,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (predictionCityNameEl) predictionCityNameEl.textContent = 'No city selected';
     if (maxTempPredictionInputEl) maxTempPredictionInputEl.disabled = true;
     if (submitPredictionBtnEl) submitPredictionBtnEl.disabled = true;
-    
+
     // Initialize History Section State
     if (historyCityNameEl) historyCityNameEl.textContent = 'No city selected';
     if (getHistoryBtnEl) getHistoryBtnEl.disabled = true;
-    
-    displayStoredPredictions(); 
+
+    displayStoredPredictions();
 });
 
 
@@ -273,26 +273,26 @@ if (submitPredictionBtnEl) { submitPredictionBtnEl.addEventListener('click', fun
 function showLoadingState() {
     const weatherInfoCard = document.querySelector('.weather-info-js');
     document.getElementById('error-message-js').textContent = '';
-    document.getElementById('error-message-js').style.display = 'none'; 
+    document.getElementById('error-message-js').style.display = 'none';
     if (weatherInfoCard) {
         weatherInfoCard.classList.add('weather-data-loading');
     }
-    document.getElementById('city-name').textContent = ''; 
+    document.getElementById('city-name').textContent = '';
     document.getElementById('temperature').textContent = '';
     document.getElementById('description').textContent = '';
     document.getElementById('humidity').textContent = '';
     document.getElementById('pressure').textContent = '';
     document.getElementById('wind-speed').textContent = '';
-    document.getElementById('weather-icon').className = 'fas'; 
+    document.getElementById('weather-icon').className = 'fas';
 }
 document.getElementById('search-form').addEventListener('submit', function(event) {
-    event.preventDefault(); 
+    event.preventDefault();
     var cityInput = document.getElementById('city-input').value.trim();
     if (!cityInput) {
         displayError("Please enter a city name or use 'geolocation'.");
         return;
     }
-    showLoadingState(); 
+    showLoadingState();
     if (cityInput.toLowerCase() === 'geolocation') {
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(function(position) {
@@ -329,17 +329,17 @@ function getWeather(city) {
     .then(weatherData => {
         if (weatherData.error) { displayError(weatherData.error); return; }
         // Assuming weatherData from /api/weather now includes latitude and longitude
-        currentLatitude = weatherData.latitude; 
+        currentLatitude = weatherData.latitude;
         currentLongitude = weatherData.longitude;
-        updateWeatherDisplay(weatherData); 
-        
+        updateWeatherDisplay(weatherData);
+
         fetch(`https://nominatim.openstreetmap.org/search?city=${encodeURIComponent(city)}&format=json&limit=1`)
         .then(response => { if (!response.ok) throw new Error(`Nominatim search failed: ${response.status}`); return response.json(); })
         .then(geoData => {
             if (geoData && geoData.length > 0) {
                 var lat = parseFloat(geoData[0].lat); var lon = parseFloat(geoData[0].lon);
-                map.setView([lat, lon], 10); marker.setLatLng([lat, lon]); 
-                updatePopup(weatherData); 
+                map.setView([lat, lon], 10); marker.setLatLng([lat, lon]);
+                updatePopup(weatherData);
             } else { console.warn(`Could not find coordinates for city: ${city} via Nominatim.`); updatePopup(weatherData); }
         })
         .catch(error => { console.error('Nominatim API error:', error); updatePopup(weatherData); });
@@ -349,7 +349,7 @@ function getWeather(city) {
 if (activityButton) {
     activityButton.addEventListener('click', function() { /* ... (implementation as before) ... */ });
 }
-if (healthAdviceButton) { 
+if (healthAdviceButton) {
     healthAdviceButton.addEventListener('click', function() { /* ... (implementation as before) ... */ });
 }
 if (submitPredictionBtnEl) {
@@ -366,14 +366,14 @@ if (submitPredictionBtnEl) {
         if (existingPrediction) { displayAppFeedback(predictionFeedbackMsgEl, `Prediction already made for ${currentCityName} for tomorrow (${tomorrowsDate}).`, 'error'); return; }
         const newPrediction = {
             id: Date.now().toString(), city: currentCityName, date: tomorrowsDate,
-            predicted_max_temp: predictedTemp, actual_max_temp: null, 
-            submitted_on: new Date().toISOString(), status: 'Pending', points: 0 
+            predicted_max_temp: predictedTemp, actual_max_temp: null,
+            submitted_on: new Date().toISOString(), status: 'Pending', points: 0
         };
         predictions.push(newPrediction);
         localStorage.setItem('weatherPredictions', JSON.stringify(predictions));
         displayAppFeedback(predictionFeedbackMsgEl, `Prediction for ${currentCityName} (${predictedTemp}°C for ${tomorrowsDate}) submitted!`, 'success');
         maxTempPredictionInputEl.value = '';
-        displayStoredPredictions(); 
+        displayStoredPredictions();
     });
 }
 // Re-pasting the full activityButton and healthAdviceButton event listeners for completeness
@@ -385,14 +385,14 @@ if (activityButton) {
         if (!currentCityName) { activityErrorDiv.textContent = "Please search for a city's weather first."; activityErrorDiv.style.display = 'block'; return; }
         if (selectedActivities.length === 0) { activityErrorDiv.textContent = "Please select at least one activity."; activityErrorDiv.style.display = 'block'; return; }
         const selectedActivitiesString = selectedActivities.join(',');
-        activityResultsDiv.innerHTML = '<p class="loading-text">Fetching advice...</p>'; 
+        activityResultsDiv.innerHTML = '<p class="loading-text">Fetching advice...</p>';
         fetch(`/api/perfect_day_forecast?city=${encodeURIComponent(currentCityName)}&activities=${selectedActivitiesString}`)
         .then(response => {
             if (!response.ok) { return response.json().then(errData => { throw new Error(errData.error || `Activity forecast error (Status: ${response.status})`); }); }
             return response.json();
         })
         .then(data => {
-            activityResultsDiv.innerHTML = ''; 
+            activityResultsDiv.innerHTML = '';
             if (data.error) { activityErrorDiv.textContent = data.error; activityErrorDiv.style.display = 'block'; return; }
             if (data.city && data.current_weather_summary) {
                 const summaryHeader = document.createElement('h3'); summaryHeader.classList.add('forecast-summary-header'); summaryHeader.textContent = `Activity Advice for ${data.city}`; activityResultsDiv.appendChild(summaryHeader);
@@ -401,7 +401,7 @@ if (activityButton) {
             if (data.suggestions && Object.keys(data.suggestions).length > 0) {
                 for (const [activityName, suggestionText] of Object.entries(data.suggestions)) {
                     const suggestionEl = document.createElement('div'); suggestionEl.classList.add('activity-suggestion');
-                    if (suggestionText.toLowerCase().includes('favorable')) { suggestionEl.classList.add('favorable'); } 
+                    if (suggestionText.toLowerCase().includes('favorable')) { suggestionEl.classList.add('favorable'); }
                     else if (suggestionText.toLowerCase().includes('unsuitable') || suggestionText.toLowerCase().includes('not ideal') || suggestionText.toLowerCase().includes('too cold') || suggestionText.toLowerCase().includes('too windy') || suggestionText.toLowerCase().includes('too high')) { suggestionEl.classList.add('unfavorable'); }
                     suggestionEl.innerHTML = `<h4>${activityName}</h4><p>${suggestionText}</p>`; activityResultsDiv.appendChild(suggestionEl);
                 }
@@ -411,7 +411,7 @@ if (activityButton) {
         .catch(error => { activityResultsDiv.innerHTML = ''; activityErrorDiv.textContent = error.message || "Failed to fetch activity forecast."; activityErrorDiv.style.display = 'block'; console.error("Activity Forecast Fetch Error:", error); });
     });
 }
-if (healthAdviceButton) { 
+if (healthAdviceButton) {
     healthAdviceButton.addEventListener('click', function() {
         const selectedCheckboxes = document.querySelectorAll('#health-concern-selector input[name="health_concern"]:checked');
         const selectedConcerns = Array.from(selectedCheckboxes).map(cb => cb.value);
@@ -430,7 +430,7 @@ if (healthAdviceButton) {
         })
         .then(data => {
             if (data.error) { healthErrorDiv.textContent = data.error; healthErrorDiv.style.display = 'block'; return; }
-            if (data.city) { modalCitySummary.textContent = `Health advice for ${data.city}, based on current conditions.`; } 
+            if (data.city) { modalCitySummary.textContent = `Health advice for ${data.city}, based on current conditions.`; }
             else { modalCitySummary.textContent = `Health advice for ${currentCityName}, based on current conditions.`; }
             if (data.triggered_advice && data.triggered_advice.length > 0) {
                 data.triggered_advice.forEach(advice => { const p = document.createElement('p'); p.textContent = advice; modalBody.appendChild(p); });

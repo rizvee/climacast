@@ -176,14 +176,14 @@ button .fas, .styled-button .fas { margin-left: 0.5em; }
 /* Responsive Adjustments */
 @media screen and (max-width: 768px) {
     /* ... existing styles ... */
-    #prediction-challenge-card h2, #weather-history-card h2 { font-size: 1.4rem; } 
+    #prediction-challenge-card h2, #weather-history-card h2 { font-size: 1.4rem; }
     /* ... other responsive styles from prediction section ... */
 }
 
 @media screen and (max-width: 600px) {
     /* ... existing styles ... */
     .perfect-day-planner h2, .health-wellness-watch h2, #prediction-challenge-card h2, #weather-history-card h2 { font-size: 1.3rem; }
-    #get-activity-forecast-btn, #get-health-advice-btn, #submit-prediction-btn, #get-history-btn { width: 100%; padding: 12px 20px; } 
+    #get-activity-forecast-btn, #get-health-advice-btn, #submit-prediction-btn, #get-history-btn { width: 100%; padding: 12px 20px; }
     /* ... other responsive styles from prediction section ... */
 }
 
@@ -202,7 +202,7 @@ button .fas, .styled-button .fas { margin-left: 0.5em; }
     .main-weather-icon-container { margin-bottom: 15px; }
     #city-input { max-width: 500px; }
     #map { height: 350px; }
-    .activity-options, .health-options { gap: 10px; } 
+    .activity-options, .health-options { gap: 10px; }
     .activity-option, .health-option { padding: 6px 10px; }
     .activity-option label, .activity-option input[type="checkbox"],
     .health-option label, .health-option input[type="checkbox"] { font-size: 0.85rem; }
@@ -218,7 +218,7 @@ button .fas, .styled-button .fas { margin-left: 0.5em; }
     #city-input { max-width: none; margin-bottom: 10px; font-size: 0.95rem; }
     #search-form button[type="submit"] { width: 100%; font-size: 0.95rem; padding: 12px 20px; }
     h1#app-title { font-size: 1.8rem; margin-bottom: 20px; }
-    .card, .weather-info-js, .perfect-day-planner, .health-wellness-watch, #prediction-challenge-card, #weather-history-card { padding: 15px; } 
+    .card, .weather-info-js, .perfect-day-planner, .health-wellness-watch, #prediction-challenge-card, #weather-history-card { padding: 15px; }
     .weather-info-js h2#city-name { font-size: 1.4rem; }
     .weather-info-js #temperature { font-size: 2.5rem; }
     #weather-icon { font-size: 4rem; }
@@ -227,7 +227,7 @@ button .fas, .styled-button .fas { margin-left: 0.5em; }
     #map { height: 300px; }
     /* Card titles already covered by the general rule */
     #predictions-history-area h3 { font-size: 1.1rem; }
-    #predictions-list { max-height: 250px; } 
+    #predictions-list { max-height: 250px; }
 }
 
 @media screen and (max-width: 375px) {
@@ -239,7 +239,7 @@ button .fas, .styled-button .fas { margin-left: 0.5em; }
     #weather-icon { font-size: 3.5rem; }
     .container { padding: 15px; }
     #map { height: 250px; }
-    #city-input, #search-form button[type="submit"], 
+    #city-input, #search-form button[type="submit"],
     #get-activity-forecast-btn, #get-health-advice-btn, #submit-prediction-btn, #get-history-btn { padding: 10px 15px; font-size: 0.9rem; }
     .activity-option label, .activity-option input[type="checkbox"],
     .health-option label, .health-option input[type="checkbox"] { font-size: 0.8rem; }
