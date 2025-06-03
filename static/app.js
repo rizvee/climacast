@@ -74,10 +74,12 @@ function showLoadingState() {
     const windSpeedEl = document.getElementById('wind-speed');
     if(windSpeedEl) windSpeedEl.textContent = '';
     const weatherIconEl = document.getElementById('weather-icon');
-    if(weatherIconEl) weatherIconEl.className = 'fas'; 
+    if(weatherIconEl) weatherIconEl.className = 'fas';
+    // Hide AI summary during loading
+    hideAiSummary();
 }
 
-function getWeatherIconClass(weatherId, weatherMain, description) { 
+function getWeatherIconClass(weatherId, weatherMain, description) {
     const desc = description ? description.toLowerCase() : '';
     weatherMain = weatherMain ? weatherMain.toLowerCase() : '';
 
@@ -182,10 +184,49 @@ function updateWeatherDisplay(weatherData) {
     if (activityErrorDiv) { activityErrorDiv.textContent = ''; activityErrorDiv.style.display = 'none'; }
     if (healthErrorDiv) { healthErrorDiv.textContent = ''; healthErrorDiv.style.display = 'none'; }
     if (healthAdviceModal && healthAdviceModal.classList.contains('show')) { healthAdviceModal.classList.remove('show'); } 
-    if (predictionFeedbackMsgEl) { displayAppFeedback(predictionFeedbackMsgEl, '', 'clear'); } 
-    if (historicalDisplayAreaEl) historicalDisplayAreaEl.innerHTML = ''; 
+    if (predictionFeedbackMsgEl) { displayAppFeedback(predictionFeedbackMsgEl, '', 'clear'); }
+    if (historicalDisplayAreaEl) historicalDisplayAreaEl.innerHTML = '';
     if (historyFeedbackMsgEl) { displayAppFeedback(historyFeedbackMsgEl, '', 'clear'); }
+    // AI summary is handled in getWeather or displayError
 }
+
+// --- AI Weather Summary Functions ---
+async function getAiWeatherSummary(promptText) {
+    const response = await fetch('/api/generate-summary', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ prompt: promptText }),
+    });
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({})); // Catch if error response is not JSON
+        throw new Error(errorData.error || `AI summary generation failed: ${response.statusText}`);
+    }
+    const data = await response.json();
+    return data.summary;
+}
+
+function displayAiSummary(summaryText) {
+    const aiSummaryTextEl = document.getElementById('ai-summary-text');
+    const aiSummaryCardEl = document.getElementById('ai-summary-card');
+    if (aiSummaryTextEl && aiSummaryCardEl) {
+        aiSummaryTextEl.textContent = summaryText;
+        aiSummaryCardEl.style.display = 'block';
+    }
+}
+
+function hideAiSummary() {
+    const aiSummaryTextEl = document.getElementById('ai-summary-text');
+    const aiSummaryCardEl = document.getElementById('ai-summary-card');
+    if (aiSummaryCardEl) {
+        aiSummaryCardEl.style.display = 'none';
+    }
+    if (aiSummaryTextEl) {
+        aiSummaryTextEl.textContent = ''; // Clear previous summary
+    }
+}
+// --- End AI Weather Summary Functions ---
 
 function displayError(message) {
     const errorDiv = document.getElementById('error-message-js');
@@ -221,7 +262,10 @@ function displayError(message) {
     if (activityResultsDiv) activityResultsDiv.innerHTML = '';
     if (activityErrorDiv) { activityErrorDiv.textContent = ''; activityErrorDiv.style.display = 'none'; }
     if (healthErrorDiv) { healthErrorDiv.textContent = ''; healthErrorDiv.style.display = 'none'; }
-    if (healthAdviceModal && healthAdviceModal.classList.contains('show')) { healthAdviceModal.classList.remove('show'); } 
+    if (healthAdviceModal && healthAdviceModal.classList.contains('show')) { healthAdviceModal.classList.remove('show'); }
+
+    // Hide AI summary on error
+    hideAiSummary();
 }
 
 
@@ -442,6 +486,38 @@ function getWeather(city) {
         if (weatherData.error) { displayError(weatherData.error); return; }
         
         updateWeatherDisplay(weatherData);
+
+        // After main weather data is displayed, fetch and display AI summary
+        const prompt = `Based on the following weather data for ${weatherData.city} today:
+        - Current Temperature: ${weatherData.temperature}°C
+        - Weather Condition: ${weatherData.description} (${weatherData.weather_main})
+        - Humidity: ${weatherData.humidity}%
+        - Wind Speed: ${weatherData.wind_speed} m/s
+        - Pressure: ${weatherData.pressure} hPa
+        Please provide a concise, conversational weather summary (2-3 sentences) suitable for a general user. Highlight any notable conditions or advice (e.g., if an umbrella is needed, if it's particularly windy, or if it's a pleasant day). Avoid conversational fluff like "Okay, here's the summary:". Focus on the most impactful aspects for someone planning their day.`;
+
+        // Show loading state for AI summary
+        const aiSummaryTextEl = document.getElementById('ai-summary-text');
+        const aiSummaryCardEl = document.getElementById('ai-summary-card');
+        if (aiSummaryTextEl) aiSummaryTextEl.textContent = 'Generating AI summary...'; // Placeholder
+        if (aiSummaryCardEl) aiSummaryCardEl.style.display = 'block';
+
+        getAiWeatherSummary(prompt)
+            .then(aiSummary => {
+                if (aiSummary && aiSummary.trim() !== "") {
+                    displayAiSummary(aiSummary);
+                } else {
+                    console.warn("AI summary was empty or failed silently.");
+                    hideAiSummary();
+                }
+            })
+            .catch(error => {
+                console.error("Error getting AI summary:", error);
+                // Optionally display a user-friendly error message in the AI summary card itself
+                if (aiSummaryTextEl) aiSummaryTextEl.textContent = 'Could not load AI summary at this time.';
+                // Or simply hide it if preferred:
+                // hideAiSummary();
+            });
 
         if (weatherData.latitude && weatherData.longitude) {
              map.setView([weatherData.latitude, weatherData.longitude], 10);

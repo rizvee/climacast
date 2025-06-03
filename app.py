@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, jsonify
 import requests
 import os
 from datetime import datetime, timedelta
+import google.generativeai as genai
 
 app = Flask(__name__)
 
@@ -10,6 +11,55 @@ OWM_BASE_URL = 'http://api.openweathermap.org/data/2.5/weather'
 # Base URL for Open-Meteo Historical API
 OPEN_METEO_HISTORICAL_URL = 'https://archive-api.open-meteo.com/v1/archive'
 
+# Nominatim Geocoding URL
+NOMINATIM_BASE_URL = 'https://nominatim.openstreetmap.org/search'
+
+def geocode_city(city_name):
+    """
+    Geocodes a city name to latitude and longitude using Nominatim.
+    Returns (latitude, longitude) or None if not found or an error occurs.
+    """
+    headers = {
+        'User-Agent': 'ClimaCast/1.0 FlaskApp (Flask Weather App)' # Nominatim requires a User-Agent
+    }
+    params = {'q': city_name, 'format': 'json', 'limit': 1}
+    try:
+        response = requests.get(NOMINATIM_BASE_URL, params=params, headers=headers, timeout=5) # Added timeout
+        response.raise_for_status()  # Raise HTTPError for bad responses (4xx or 5xx)
+        data = response.json()
+        if data and isinstance(data, list) and len(data) > 0:
+            # Ensure lat and lon are present and are valid numbers
+            lat_str = data[0].get('lat')
+            lon_str = data[0].get('lon')
+            if lat_str is not None and lon_str is not None:
+                try:
+                    lat = float(lat_str)
+                    lon = float(lon_str)
+                    return lat, lon
+                except ValueError:
+                    app.logger.error(f"Nominatim geocoding for '{city_name}': Invalid lat/lon format {data[0]}.")
+                    return None
+            else:
+                app.logger.info(f"Nominatim geocoding for '{city_name}': Lat/lon not found in response {data[0]}.")
+                return None
+        else:
+            app.logger.info(f"Nominatim geocoding for '{city_name}': No results found. Data: {data}")
+            return None
+    except requests.exceptions.HTTPError as http_err:
+        app.logger.error(f"Nominatim HTTPError for city '{city_name}': {http_err}")
+        return None
+    except requests.exceptions.Timeout:
+        app.logger.error(f"Nominatim timeout for city '{city_name}'.")
+        return None
+    except requests.exceptions.RequestException as req_err:
+        app.logger.error(f"Nominatim RequestException for city '{city_name}': {req_err}")
+        return None
+    except ValueError as json_err: # Catch JSON decoding errors
+        app.logger.error(f"Nominatim JSON decoding error for city '{city_name}': {json_err}")
+        return None
+    except Exception as e:
+        app.logger.error(f"Unexpected error in geocode_city for '{city_name}': {e}", exc_info=True)
+        return None
 
 # --- Perfect Day Forecaster Data ---
 PERFECT_DAY_ACTIVITIES = {
@@ -47,32 +97,18 @@ def get_weather():
     city = request.args.get('city')
     if not city:
         return jsonify({'error': 'City parameter is required.'}), 400
-    params = {'q': city, 'appid': api_key, 'units': 'metric'}
-    try:
-        response = requests.get(OWM_BASE_URL, params=params)
-        response.raise_for_status()
-        data = response.json()
 
-        # Check for essential keys more thoroughly
+    # --- Helper function to process OWM data ---
+    def process_owm_response(data, original_city_name):
         if not all(k in data for k in ['weather', 'main', 'wind', 'coord']):
-            app.logger.error(f"Malformed weather data for city '{city}': Core keys missing. Data: {data}")
-            return jsonify({'error': 'Received incomplete data from weather service.'}), 500
-        if not data['weather']: # Ensure weather list is not empty
-             app.logger.error(f"Malformed weather data for city '{city}': 'weather' array empty. Data: {data}")
-             return jsonify({'error': 'Received incomplete weather details from weather service.'}), 500
-
-
-        if 'cod' in data and str(data['cod']) != '200':
-            error_message = data.get('message', 'An error occurred with the weather service.')
-            status_code = int(data['cod'])
-            if status_code == 401: error_message = 'Unauthorized. Check your API key.'
-            elif status_code == 404: error_message = f"City '{city}' not found. Please check the spelling."
-            elif status_code == 429: error_message = 'Rate limit exceeded. Please try again later.'
-            app.logger.warning(f"OpenWeatherMap API error for city '{city}': {data.get('message')} (status: {status_code})")
-            return jsonify({'error': error_message}), status_code
+            app.logger.error(f"Malformed OWM data for city '{original_city_name}': Core keys missing. Data: {data}")
+            return None, ({'error': 'Received incomplete data from weather service.'}, 500)
+        if not data['weather']:
+            app.logger.error(f"Malformed OWM data for city '{original_city_name}': 'weather' array empty. Data: {data}")
+            return None, ({'error': 'Received incomplete weather details from weather service.'}, 500)
 
         weather_info = {
-            'city': data.get('name', city),
+            'city': data.get('name', original_city_name), # Use original city name if OWM doesn't provide one
             'temperature': data['main']['temp'],
             'description': data['weather'][0]['description'],
             'weather_main': data['weather'][0]['main'],
@@ -80,22 +116,91 @@ def get_weather():
             'humidity': data['main']['humidity'],
             'pressure': data['main']['pressure'],
             'wind_speed': data['wind']['speed'],
-            'latitude': data['coord']['lat'],   # Added latitude
-            'longitude': data['coord']['lon']  # Added longitude
+            'latitude': data['coord']['lat'],
+            'longitude': data['coord']['lon']
         }
-        return jsonify(weather_info), 200
+        return weather_info, None
+    # --- End Helper function ---
+
+    params_city = {'q': city, 'appid': api_key, 'units': 'metric'}
+    owm_response_data = None
+    owm_status_code = None
+
+    try:
+        # Initial OWM Call (by city name)
+        app.logger.info(f"Attempting OWM lookup for city: '{city}'")
+        response = requests.get(OWM_BASE_URL, params=params_city, timeout=10) # Added timeout
+        response.raise_for_status() # Raise HTTPError for bad responses (4xx or 5xx)
+        data = response.json()
+
+        if 'cod' in data and str(data['cod']) != '200':
+            owm_status_code = int(data['cod'])
+            # Specific handling for 404 to trigger geocoding
+            if owm_status_code == 404:
+                app.logger.warning(f"OWM city '{city}' not found (404). Attempting geocoding fallback.")
+                # Fallback to geocoding
+                coords = geocode_city(city)
+                if coords:
+                    lat, lon = coords
+                    app.logger.info(f"Geocoding successful for '{city}': lat={lat}, lon={lon}. Querying OWM by coords.")
+                    params_coords = {'lat': lat, 'lon': lon, 'appid': api_key, 'units': 'metric'}
+                    response_coords = requests.get(OWM_BASE_URL, params=params_coords, timeout=10) # Added timeout
+                    response_coords.raise_for_status()
+                    data_coords = response_coords.json()
+
+                    if 'cod' in data_coords and str(data_coords['cod']) != '200':
+                        owm_status_code_coords = int(data_coords['cod'])
+                        error_message_coords = data_coords.get('message', 'Error from weather service on geocoded location.')
+                        app.logger.warning(f"OWM API error for geocoded '{city}' (lat:{lat},lon:{lon}): {error_message_coords} (status: {owm_status_code_coords})")
+                        return jsonify({'error': f"Weather data not found for the coordinates of '{city}'. Original error: {error_message_coords}"}), owm_status_code_coords
+
+                    owm_response_data = data_coords # Use data from coord-based lookup
+                else:
+                    app.logger.warning(f"Geocoding failed for city '{city}'. Returning original 404.")
+                    return jsonify({'error': f"City '{city}' not found and could not be precisely located. Please check the spelling or try a nearby larger city."}), 404
+            else: # Other OWM errors (401, 429, etc.)
+                error_message = data.get('message', 'An error occurred with the weather service.')
+                if owm_status_code == 401: error_message = 'Unauthorized. Check your API key.'
+                elif owm_status_code == 429: error_message = 'Rate limit exceeded. Please try again later.'
+                app.logger.warning(f"OpenWeatherMap API error for city '{city}': {error_message} (status: {owm_status_code})")
+                return jsonify({'error': error_message}), owm_status_code
+        else: # Successful initial OWM call by city name
+            owm_response_data = data
+
+        # Process the successful OWM response (either from city or coords)
+        if owm_response_data:
+            weather_info, error_tuple = process_owm_response(owm_response_data, city)
+            if error_tuple:
+                return jsonify(error_tuple[0]), error_tuple[1]
+            return jsonify(weather_info), 200
+        else: # Should be caught by specific errors above, but as a fallback
+            app.logger.error(f"Reached unexpected state in /api/weather for city '{city}' where owm_response_data is None.")
+            return jsonify({'error': 'An unexpected issue occurred processing weather data.'}), 500
+
     except requests.exceptions.HTTPError as http_err:
+        # This block will catch HTTP errors from OWM (city or coord lookup) if not already handled by cod checks
         status_code = http_err.response.status_code if http_err.response is not None else 500
         error_message = 'An error occurred while fetching weather data.'
-        if status_code == 401: error_message = 'Unauthorized. Invalid API key.'
-        elif status_code == 404: error_message = f"Weather data for city '{city}' not found or API endpoint error."
-        elif status_code == 429: error_message = 'Rate limit exceeded with weather service. Please try again later.'
-        app.logger.error(f"HTTPError when calling OpenWeatherMap for city '{city}': {http_err}")
+        # Check if this error is for the geocoded attempt
+        if 'params_coords' in locals(): # implies geocoding was attempted
+             error_message = f"Weather data not found for the geocoded location of '{city}'."
+             app.logger.error(f"HTTPError from OWM (geocoded) for city '{city}': {http_err}")
+        else: # Error from initial city lookup
+            if status_code == 401: error_message = 'Unauthorized. Invalid API key.'
+            # 404 for city name should have been handled by 'cod': 404 block, but if it gets here, handle it.
+            elif status_code == 404: error_message = f"City '{city}' not found by weather service (direct HTTPError)."
+            elif status_code == 429: error_message = 'Rate limit exceeded with weather service. Please try again later.'
+            app.logger.error(f"HTTPError from OWM (city name) for city '{city}': {http_err}")
         return jsonify({'error': error_message}), status_code
     except requests.exceptions.Timeout:
-        app.logger.error(f"Timeout when calling OpenWeatherMap for city '{city}'.") # Added logging for timeout
-        return jsonify({'error': 'The request to the weather service timed out. Please try again later.'}), 504
-    except requests.exceptions.RequestException as e: # Added logging for general request exception
+        # Distinguish timeout source if possible
+        if 'params_coords' in locals() and 'response_coords' not in locals(): # Timeout during geocoded OWM call
+            app.logger.error(f"Timeout when calling OpenWeatherMap for geocoded city '{city}'.")
+            return jsonify({'error': f'The request to the weather service for geocoded location of "{city}" timed out.'}), 504
+        else: # Timeout during initial OWM call or geocoding itself (handled by geocode_city)
+            app.logger.error(f"Timeout when calling OpenWeatherMap for city '{city}'.")
+            return jsonify({'error': 'The request to the weather service timed out. Please try again later.'}), 504
+    except requests.exceptions.RequestException as e:
         app.logger.error(f"RequestException when calling OpenWeatherMap for city '{city}': {e}")
         return jsonify({'error': 'Could not connect to the weather service. Please check your network or try again later.'}), 503
     except Exception as e:
@@ -311,5 +416,63 @@ def weather_history_on_this_day():
         except Exception as e: app.logger.error(f"Unexpected error Open-Meteo for {historical_date_to_fetch}: {e}", exc_info=True); historical_results.append({"year": target_hist_year, "date": historical_date_to_fetch, "error": "Unexpected error for this year."})
     return jsonify({"history": historical_results})
 
+@app.route('/api/generate-summary', methods=['POST'])
+def generate_summary():
+    gemini_api_key = os.getenv('GEMINI_API_KEY')
+    if not gemini_api_key:
+        app.logger.error("GEMINI_API_KEY not set.")
+        return jsonify({'error': 'Gemini API key not configured. Please contact administrator.'}), 500
+
+    try:
+        genai.configure(api_key=gemini_api_key)
+    except Exception as e:
+        app.logger.error(f"Failed to configure Gemini API: {e}", exc_info=True)
+        return jsonify({'error': 'Failed to configure AI summarization service.'}), 500
+
+    request_data = request.get_json()
+    if not request_data or 'prompt' not in request_data:
+        return jsonify({'error': 'Prompt is required in the JSON body.'}), 400
+
+    prompt = request_data['prompt']
+    if not prompt.strip():
+        return jsonify({'error': 'Prompt cannot be empty.'}), 400
+
+    try:
+        model = genai.GenerativeModel('gemini-pro')
+        # Using the synchronous version as Flask typically runs in a synchronous manner
+        response = model.generate_content(prompt)
+
+        # Check if the response has parts and text, handle potential issues
+        if response.parts:
+            summary_text = "".join(part.text for part in response.parts if hasattr(part, 'text'))
+        elif hasattr(response, 'text'): # Fallback for simpler response structure
+             summary_text = response.text
+        else: # If no text found, it might be a blocked prompt or other issue
+            app.logger.warning(f"Gemini response for prompt '{prompt[:50]}...' did not contain text. Response: {response}")
+            # Check for prompt feedback which might indicate safety blocking
+            if response.prompt_feedbacks:
+                for feedback in response.prompt_feedbacks:
+                    app.logger.warning(f"Gemini prompt feedback: {feedback}")
+                return jsonify({'error': 'Failed to generate summary due to content restrictions or other issues. Please check logs.'}), 500
+            return jsonify({'error': 'Failed to generate summary, empty response from AI service.'}), 500
+
+        if not summary_text.strip():
+             app.logger.warning(f"Gemini generated an empty summary for prompt '{prompt[:50]}...'. Response: {response}")
+             return jsonify({'error': 'AI service generated an empty summary.'}), 500
+
+        return jsonify({'summary': summary_text}), 200
+
+    except AttributeError as ae: # Catch issues like 'text' not being available if API changes or error in response structure
+        app.logger.error(f"Gemini API response attribute error: {ae}. Response: {response if 'response' in locals() else 'N/A'}", exc_info=True)
+        return jsonify({'error': 'Failed to parse AI summary response.'}), 500
+    except Exception as e:
+        # More specific error logging for common Gemini API issues if possible
+        # For example, if there's a specific exception for API authentication or quota
+        app.logger.error(f"Gemini API call failed: {e}", exc_info=True)
+        # Consider mapping specific google.api_core.exceptions to user-friendly messages
+        # For now, a generic message:
+        return jsonify({'error': 'Failed to generate AI summary due to an internal error.'}), 500
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    # Ensure debug is False in production if GEMINI_API_KEY is sensitive
+    app.run(debug=os.getenv('FLASK_DEBUG', 'false').lower() == 'true')
