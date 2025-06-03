@@ -51,8 +51,50 @@ function displayAppFeedback(element, message, type) {
 }
 
 
-function getWeatherIconClass(weatherId, weatherMain, description) { /* ... (implementation as before) ... */ }
-function updatePopup(weatherData) { /* ... (implementation as before) ... */ }
+function getWeatherIconClass(weatherId, weatherMain, description) { 
+    // Fallback to description if weatherId or weatherMain is not definitive
+    const desc = description.toLowerCase();
+    weatherMain = weatherMain ? weatherMain.toLowerCase() : '';
+
+    if (weatherId >= 200 && weatherId <= 232) return 'fa-bolt'; // Thunderstorm
+    if (weatherId >= 300 && weatherId <= 321) return 'fa-cloud-rain'; // Drizzle
+    if (weatherId >= 500 && weatherId <= 504) return 'fa-cloud-showers-heavy'; // Rain
+    if (weatherId === 511) return 'fa-snowflake'; // Freezing Rain (Snowflake icon)
+    if (weatherId >= 520 && weatherId <= 531) return 'fa-cloud-rain'; // Shower Rain
+    if (weatherId >= 600 && weatherId <= 622) return 'fa-snowflake'; // Snow
+    if (weatherId >= 701 && weatherId <= 781) return 'fa-smog'; // Atmosphere (Mist, Smoke, Haze, etc.)
+    if (weatherId === 800) return 'fa-sun'; // Clear
+    if (weatherId === 801) return 'fa-cloud-sun'; // Few clouds
+    if (weatherId === 802) return 'fa-cloud'; // Scattered clouds
+    if (weatherId === 803 || weatherId === 804) return 'fa-cloud-meatball'; // Broken/Overcast clouds
+
+    // Fallback based on weatherMain if ID is not specific enough or out of range
+    if (weatherMain === 'thunderstorm') return 'fa-bolt';
+    if (weatherMain === 'drizzle') return 'fa-cloud-rain';
+    if (weatherMain === 'rain') return 'fa-cloud-showers-heavy';
+    if (weatherMain === 'snow') return 'fa-snowflake';
+    if (weatherMain === 'clear') return 'fa-sun';
+    if (weatherMain === 'clouds') return 'fa-cloud';
+    if (desc.includes('smoke') || desc.includes('haze') || desc.includes('dust') || desc.includes('sand') || desc.includes('ash')) return 'fa-smog'; // More specific atmosphere
+    if (desc.includes('fog') || desc.includes('mist')) return 'fa-smog';
+    if (desc.includes('squall') || desc.includes('tornado')) return 'fa-wind'; // Extreme wind
+
+    return 'fa-question-circle'; // Default/unknown
+}
+
+function updatePopup(weatherData) {
+    if (!marker || !weatherData) return;
+    const iconClass = getWeatherIconClass(weatherData.weather_id, weatherData.weather_main, weatherData.description);
+    const popupContent = `
+        <h3><i class="fas ${iconClass}"></i> ${weatherData.city}</h3>
+        <p>Temperature: ${Math.round(weatherData.temperature)}°C</p>
+        <p>Description: ${weatherData.description}</p>
+        <p>Humidity: ${weatherData.humidity}%</p>
+        <p>Pressure: ${weatherData.pressure} hPa</p>
+        <p>Wind Speed: ${weatherData.wind_speed} m/s</p>
+    `;
+    marker.setPopupContent(popupContent).openPopup();
+}
 
 // DOM Element References
 const healthAdviceModal = document.getElementById('health-advice-modal');
@@ -80,33 +122,44 @@ function updateWeatherDisplay(weatherData) {
     const weatherInfoCard = document.querySelector('.weather-info-js');
     const weatherIconElement = document.getElementById('weather-icon');
     const determinedIconClass = getWeatherIconClass(weatherData.weather_id, weatherData.weather_main, weatherData.description);
-    weatherIconElement.className = 'fas ' + determinedIconClass;
+    if (weatherIconElement) weatherIconElement.className = 'fas ' + determinedIconClass;
 
     currentCityName = weatherData.city || '';
-    currentLatitude = weatherData.latitude; // Assuming 'latitude' key from backend
-    currentLongitude = weatherData.longitude; // Assuming 'longitude' key from backend
+    currentLatitude = weatherData.latitude; 
+    currentLongitude = weatherData.longitude; 
 
-    document.getElementById('city-name').textContent = currentCityName;
+    const cityNameEl = document.getElementById('city-name');
+    if (cityNameEl) cityNameEl.textContent = currentCityName;
+
     if (predictionCityNameEl) predictionCityNameEl.textContent = currentCityName;
-    if (maxTempPredictionInputEl) maxTempPredictionInputEl.disabled = false;
-    if (submitPredictionBtnEl) submitPredictionBtnEl.disabled = false;
+    if (maxTempPredictionInputEl) maxTempPredictionInputEl.disabled = !currentCityName;
+    if (submitPredictionBtnEl) submitPredictionBtnEl.disabled = !currentCityName;
 
     if (historyCityNameEl) historyCityNameEl.textContent = currentCityName;
     if (getHistoryBtnEl) getHistoryBtnEl.disabled = (!currentLatitude || !currentLongitude);
 
 
     const temp = weatherData.temperature !== undefined ? Math.round(weatherData.temperature) : '';
-    document.getElementById('temperature').textContent = temp;
-    document.getElementById('description').textContent = weatherData.description || '';
-    document.getElementById('humidity').textContent = weatherData.humidity !== undefined ? weatherData.humidity : '';
-    document.getElementById('pressure').textContent = weatherData.pressure !== undefined ? weatherData.pressure : '';
-    document.getElementById('wind-speed').textContent = weatherData.wind_speed !== undefined ? weatherData.wind_speed : '';
+    const tempEl = document.getElementById('temperature');
+    if (tempEl) tempEl.textContent = temp;
+    
+    const descEl = document.getElementById('description');
+    if (descEl) descEl.textContent = weatherData.description || '';
+
+    const humidityEl = document.getElementById('humidity');
+    if (humidityEl) humidityEl.textContent = weatherData.humidity !== undefined ? weatherData.humidity : '';
+
+    const pressureEl = document.getElementById('pressure');
+    if (pressureEl) pressureEl.textContent = weatherData.pressure !== undefined ? weatherData.pressure : '';
+
+    const windSpeedEl = document.getElementById('wind-speed');
+    if (windSpeedEl) windSpeedEl.textContent = weatherData.wind_speed !== undefined ? weatherData.wind_speed : '';
 
     if (weatherInfoCard) { weatherInfoCard.classList.remove('weather-data-loading'); }
     if (activityResultsDiv) activityResultsDiv.innerHTML = '';
     if (activityErrorDiv) { activityErrorDiv.textContent = ''; activityErrorDiv.style.display = 'none'; }
     if (healthErrorDiv) { healthErrorDiv.textContent = ''; healthErrorDiv.style.display = 'none'; }
-    if (healthAdviceModal) { healthAdviceModal.classList.remove('show'); }
+    if (healthAdviceModal && healthAdviceModal.classList.contains('show')) { healthAdviceModal.classList.remove('show'); } // Hide if open
     if (predictionFeedbackMsgEl) { predictionFeedbackMsgEl.textContent = ''; predictionFeedbackMsgEl.className = 'feedback-message'; predictionFeedbackMsgEl.style.display = 'none'; }
     if (historicalDisplayAreaEl) historicalDisplayAreaEl.innerHTML = ''; // Clear history display
     if (historyFeedbackMsgEl) { historyFeedbackMsgEl.textContent = ''; historyFeedbackMsgEl.className = 'feedback-message'; historyFeedbackMsgEl.style.display = 'none';}
@@ -115,46 +168,108 @@ function updateWeatherDisplay(weatherData) {
 function displayError(message) {
     const errorDiv = document.getElementById('error-message-js');
     const weatherInfoCard = document.querySelector('.weather-info-js');
-    errorDiv.style.display = 'block';
-    errorDiv.textContent = message || "An unexpected error occurred. Please try again.";
+    if (errorDiv) {
+      errorDiv.style.display = 'block';
+      errorDiv.textContent = message || "An unexpected error occurred. Please try again.";
+    }
 
     currentCityName = '';
     currentLatitude = null;
     currentLongitude = null;
 
-    document.getElementById('city-name').textContent = '';
-    document.getElementById('temperature').textContent = '';
-    // ... (rest of weather display clearing) ...
-    document.getElementById('description').textContent = '';
-    document.getElementById('humidity').textContent = '';
-    document.getElementById('pressure').textContent = '';
-    document.getElementById('wind-speed').textContent = '';
-    document.getElementById('weather-icon').className = 'fas';
+    const UIElementsToClear = ['city-name', 'temperature', 'description', 'humidity', 'pressure', 'wind-speed'];
+    UIElementsToClear.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = '';
+    });
+    const weatherIconEl = document.getElementById('weather-icon');
+    if (weatherIconEl) weatherIconEl.className = 'fas';
 
 
     if (predictionCityNameEl) predictionCityNameEl.textContent = 'No city selected';
     if (maxTempPredictionInputEl) maxTempPredictionInputEl.disabled = true;
     if (submitPredictionBtnEl) submitPredictionBtnEl.disabled = true;
-    if (predictionFeedbackMsgEl) { predictionFeedbackMsgEl.textContent = ''; predictionFeedbackMsgEl.className = 'feedback-message'; predictionFeedbackMsgEl.style.display = 'none'; }
+    if (predictionFeedbackMsgEl) { displayAppFeedback(predictionFeedbackMsgEl, '', 'clear'); } // Clear feedback
 
     if (historyCityNameEl) historyCityNameEl.textContent = 'No city selected';
     if (getHistoryBtnEl) getHistoryBtnEl.disabled = true;
     if (historicalDisplayAreaEl) historicalDisplayAreaEl.innerHTML = '';
-    if (historyFeedbackMsgEl) { historyFeedbackMsgEl.textContent = ''; historyFeedbackMsgEl.className = 'feedback-message'; historyFeedbackMsgEl.style.display = 'none';}
-
+    if (historyFeedbackMsgEl) { displayAppFeedback(historyFeedbackMsgEl, '', 'clear'); } // Clear feedback
 
     if (weatherInfoCard) { weatherInfoCard.classList.remove('weather-data-loading'); }
     if (activityResultsDiv) activityResultsDiv.innerHTML = '';
     if (activityErrorDiv) { activityErrorDiv.textContent = ''; activityErrorDiv.style.display = 'none'; }
     if (healthErrorDiv) { healthErrorDiv.textContent = ''; healthErrorDiv.style.display = 'none'; }
-    if (healthAdviceModal) { healthAdviceModal.classList.remove('show'); }
+    if (healthAdviceModal && healthAdviceModal.classList.contains('show')) { healthAdviceModal.classList.remove('show'); } // Hide if open
 }
 
 
 // --- Daily Prediction Challenge Logic ---
-// displayPredictionFeedback is now displayAppFeedback
-function displayStoredPredictions() { /* ... (implementation as before, uses displayAppFeedback if needed) ... */ }
-// submitPredictionBtnEl event listener uses displayAppFeedback
+function displayStoredPredictions() { 
+    if (!predictionsListEl) return;
+    predictionsListEl.innerHTML = ''; // Clear current list
+    let predictions = JSON.parse(localStorage.getItem('weatherPredictions')) || [];
+    if (predictions.length === 0) {
+        predictionsListEl.innerHTML = '<p class="no-predictions-text">No predictions made yet. Make your first one!</p>';
+        return;
+    }
+
+    // Sort: Pending first, then by newest submission. Checked items also by newest submission.
+    predictions.sort((a, b) => {
+        if (a.status === 'Pending' && b.status !== 'Pending') return -1;
+        if (a.status !== 'Pending' && b.status === 'Pending') return 1;
+        return new Date(b.submitted_on) - new Date(a.submitted_on);
+    });
+
+    const today = getFormattedDate(new Date());
+    let needsStorageUpdate = false;
+
+    predictions.forEach(prediction => {
+        if (prediction.date < today && prediction.status === 'Pending') { // Only check if date is in the past
+            prediction.actual_max_temp = parseFloat((prediction.predicted_max_temp - (Math.random() * 4 - 2)).toFixed(1));
+            const diff = Math.abs(prediction.actual_max_temp - prediction.predicted_max_temp);
+            if (diff === 0) prediction.points = 10;
+            else if (diff <= 0.5) prediction.points = 7;
+            else if (diff <= 1.0) prediction.points = 5;
+            else if (diff <= 1.5) prediction.points = 3;
+            else if (diff <= 2.0) prediction.points = 1;
+            else prediction.points = 0;
+            prediction.status = 'Checked';
+            needsStorageUpdate = true;
+        }
+
+        const item = document.createElement('div');
+        item.classList.add('prediction-item', `prediction-status-${prediction.status.toLowerCase()}`);
+        
+        let actualTempDisplay = 'Pending';
+        if (prediction.status === 'Checked') {
+            actualTempDisplay = `${prediction.actual_max_temp !== null ? prediction.actual_max_temp + '&deg;C' : 'N/A'}`;
+        } else if (prediction.date < today && prediction.status === 'Pending') {
+            actualTempDisplay = 'Awaiting update...'; // Should have been checked above, but as a fallback
+        }
+
+        item.innerHTML = `
+            <div class="prediction-meta">
+                <span class="prediction-city">${prediction.city}</span> - 
+                <span class="prediction-date">Forecast for: ${prediction.date}</span>
+            </div>
+            <div class="prediction-values">
+                <span>Predicted: ${prediction.predicted_max_temp}&deg;C</span>
+                <span>Actual: ${actualTempDisplay}</span>
+            </div>
+            <div class="prediction-result">
+                <span class="prediction-status-text">Status: ${prediction.status}</span>
+                <span class="prediction-points">Points: ${prediction.points}</span>
+            </div>
+            <small class="prediction-submitted-on">Submitted: ${new Date(prediction.submitted_on).toLocaleDateString()} ${new Date(prediction.submitted_on).toLocaleTimeString()}</small>
+        `;
+        predictionsListEl.appendChild(item);
+    });
+
+    if (needsStorageUpdate) {
+        localStorage.setItem('weatherPredictions', JSON.stringify(predictions));
+    }
+}
 
 // --- Weather History On This Day Logic ---
 if (getHistoryBtnEl) {
@@ -168,11 +283,7 @@ if (getHistoryBtnEl) {
         const currentDateStr = getFormattedDate(today);
 
         if (historicalDisplayAreaEl) historicalDisplayAreaEl.innerHTML = '';
-        if (historyFeedbackMsgEl) {
-            historyFeedbackMsgEl.textContent = '';
-            historyFeedbackMsgEl.className = 'feedback-message'; // Reset
-            historyFeedbackMsgEl.style.display = 'none';
-        }
+        if (historyFeedbackMsgEl) { displayAppFeedback(historyFeedbackMsgEl, '', 'clear'); }
 
         if (historicalDisplayAreaEl) historicalDisplayAreaEl.innerHTML = '<p class="loading-text">Fetching historical weather...</p>';
         this.disabled = true;
@@ -181,7 +292,6 @@ if (getHistoryBtnEl) {
         fetch(`/api/weather_history_on_this_day?latitude=${currentLatitude}&longitude=${currentLongitude}&current_date=${currentDateStr}`)
         .then(response => {
             if (!response.ok) {
-                // Try to parse error from backend, then fall back to status text
                 return response.json().then(errData => {
                     throw new Error(errData.error || `HTTP error! Status: ${response.status}`);
                 }).catch(() => {
@@ -199,11 +309,11 @@ if (getHistoryBtnEl) {
                 let contentRendered = false;
                 data.history.forEach(yearData => {
                     const item = document.createElement('div');
-                    item.classList.add('historical-weather-item', 'card'); // Re-use .card for individual items
+                    item.classList.add('historical-weather-item', 'card');
 
                     let detailsHTML = '';
                     if (yearData.error) {
-                        detailsHTML = `<p class="error-message" style="display:block;">${yearData.error}</p>`; // Show error directly
+                        detailsHTML = `<p class="error-message" style="display:block;">${yearData.error}</p>`;
                     } else {
                         detailsHTML = `
                             <p>Max Temp: ${yearData.max_temp !== null && yearData.max_temp !== "N/A" ? yearData.max_temp + '&deg;C' : 'N/A'}</p>
@@ -219,10 +329,12 @@ if (getHistoryBtnEl) {
                         ${detailsHTML}
                     `;
                     if (historicalDisplayAreaEl) historicalDisplayAreaEl.appendChild(item);
-                    contentRendered = true;
+                    if (!yearData.error) contentRendered = true; // Count if actual data was rendered
                 });
-                if (!contentRendered && historicalDisplayAreaEl) { // All years had errors, but no main API error
-                     historicalDisplayAreaEl.innerHTML = '<p class="no-history-text">No historical data could be processed for the past 3 years.</p>';
+                if (!contentRendered && historicalDisplayAreaEl && !data.history.some(y => y.error)) { // if nothing rendered and it wasn't because all years had errors
+                     historicalDisplayAreaEl.innerHTML = '<p class="no-history-text">No historical data found for this date in the past 3 years.</p>';
+                } else if (!contentRendered && historicalDisplayAreaEl) { // All years had errors
+                    historicalDisplayAreaEl.innerHTML = '<p class="no-history-text">Could not retrieve historical data for any of the past 3 years.</p>';
                 }
 
             } else {
@@ -231,18 +343,22 @@ if (getHistoryBtnEl) {
         })
         .catch(error => {
             if (historicalDisplayAreaEl) historicalDisplayAreaEl.innerHTML = ''; // Clear loading
-            displayAppFeedback(historyFeedbackMsgEl, `Network error: ${error.message}`, 'error');
+            displayAppFeedback(historyFeedbackMsgEl, `Network error fetching history: ${error.message}`, 'error');
             console.error("Fetch Weather History Error:", error);
         })
         .finally(() => {
-            this.disabled = false;
-            this.textContent = 'Show Weather History';
+            // Check if the button still exists in DOM before trying to modify it
+            const btn = document.getElementById('get-history-btn'); 
+            if (btn) {
+                 btn.disabled = false;
+                 btn.textContent = 'Show Weather History';
+            }
         });
     });
 }
 
 
-// --- Initialize page state ---
+// --- Initialize page state --- (Must be AFTER all functions and main var declarations)
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize Prediction Section State
     if (predictionCityNameEl) predictionCityNameEl.textContent = 'No city selected';
@@ -253,38 +369,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (historyCityNameEl) historyCityNameEl.textContent = 'No city selected';
     if (getHistoryBtnEl) getHistoryBtnEl.disabled = true;
 
-    displayStoredPredictions();
+    // Attempt to load map and other things that might depend on DOM elements being ready
+    // Map initialization is already at the top, which is fine as long as 'map' div exists.
+
+    displayStoredPredictions(); // Load and display any existing predictions
 });
 
 
-// --- Ensure all other event listeners and functions are preserved ---
-// (The tool should handle merging, but for clarity, I'm showing where the other code blocks would be)
-// Event listener for general weather search form submission
-document.getElementById('search-form').addEventListener('submit', function(event) { /* ... (implementation as before) ... */ });
-function showLoadingState() { /* ... (implementation as before) ... */ }
-function getWeather(city) { /* ... (implementation as before) ... */ }
-if (activityButton) { activityButton.addEventListener('click', function() { /* ... (implementation as before) ... */ }); }
-if (healthAdviceButton) { healthAdviceButton.addEventListener('click', function() { /* ... (implementation as before) ... */ }); }
-if (modalCloseBtn && healthAdviceModal) { modalCloseBtn.addEventListener('click', function() { healthAdviceModal.classList.remove('show'); }); }
-window.addEventListener('click', function(event) { if (event.target == healthAdviceModal && healthAdviceModal) { healthAdviceModal.classList.remove('show'); } });
-if (submitPredictionBtnEl) { submitPredictionBtnEl.addEventListener('click', function() { /* ... (implementation as before, ensure it uses displayAppFeedback) ... */ }); }
-
-// --- Re-pasting full content of functions that were elided or need displayAppFeedback ---
-function showLoadingState() {
-    const weatherInfoCard = document.querySelector('.weather-info-js');
-    document.getElementById('error-message-js').textContent = '';
-    document.getElementById('error-message-js').style.display = 'none';
-    if (weatherInfoCard) {
-        weatherInfoCard.classList.add('weather-data-loading');
-    }
-    document.getElementById('city-name').textContent = '';
-    document.getElementById('temperature').textContent = '';
-    document.getElementById('description').textContent = '';
-    document.getElementById('humidity').textContent = '';
-    document.getElementById('pressure').textContent = '';
-    document.getElementById('wind-speed').textContent = '';
-    document.getElementById('weather-icon').className = 'fas';
-}
+// --- Event listener for general weather search form submission ---
 document.getElementById('search-form').addEventListener('submit', function(event) {
     event.preventDefault();
     var cityInput = document.getElementById('city-input').value.trim();
@@ -312,11 +404,12 @@ document.getElementById('search-form').addEventListener('submit', function(event
                         displayError("Could not determine city from your location. Please enter manually.");
                     }
                 })
-                .catch(error => { displayError("Error getting city name from location. Please try entering manually."); });
+                .catch(error => { displayError("Error getting city name from location. Please try entering manually."); console.error(error); });
             }, function(geoError) { displayError(`Geolocation error: ${geoError.message}. Please enter city manually.`); });
         } else { displayError("Geolocation is not supported by this browser. Please enter city manually."); }
     } else { getWeather(cityInput); }
 });
+
 function getWeather(city) {
     fetch(`/api/weather?city=${encodeURIComponent(city)}`)
     .then(response => {
@@ -328,42 +421,216 @@ function getWeather(city) {
     })
     .then(weatherData => {
         if (weatherData.error) { displayError(weatherData.error); return; }
-        // Assuming weatherData from /api/weather now includes latitude and longitude
-        currentLatitude = weatherData.latitude;
-        currentLongitude = weatherData.longitude;
+        
         updateWeatherDisplay(weatherData);
 
-        fetch(`https://nominatim.openstreetmap.org/search?city=${encodeURIComponent(city)}&format=json&limit=1`)
-        .then(response => { if (!response.ok) throw new Error(`Nominatim search failed: ${response.status}`); return response.json(); })
-        .then(geoData => {
-            if (geoData && geoData.length > 0) {
-                var lat = parseFloat(geoData[0].lat); var lon = parseFloat(geoData[0].lon);
-                map.setView([lat, lon], 10); marker.setLatLng([lat, lon]);
-                updatePopup(weatherData);
-            } else { console.warn(`Could not find coordinates for city: ${city} via Nominatim.`); updatePopup(weatherData); }
-        })
-        .catch(error => { console.error('Nominatim API error:', error); updatePopup(weatherData); });
+        // Fetch coordinates for map AFTER main weather data is displayed & lat/lon stored if available from /api/weather
+        if (weatherData.latitude && weatherData.longitude) {
+             map.setView([weatherData.latitude, weatherData.longitude], 10);
+             marker.setLatLng([weatherData.latitude, weatherData.longitude]);
+             updatePopup(weatherData);
+        } else {
+            // Fallback to Nominatim if /api/weather didn't provide coordinates
+            fetch(`https://nominatim.openstreetmap.org/search?city=${encodeURIComponent(city)}&format=json&limit=1`)
+            .then(response => { if (!response.ok) throw new Error(`Nominatim search failed: ${response.status}`); return response.json(); })
+            .then(geoData => {
+                if (geoData && geoData.length > 0) {
+                    var lat = parseFloat(geoData[0].lat); var lon = parseFloat(geoData[0].lon);
+                    map.setView([lat, lon], 10); marker.setLatLng([lat, lon]);
+                    updatePopup(weatherData); // Update popup with weather data, map is now centered
+                } else {
+                    console.warn(`Could not find coordinates for city: ${city} via Nominatim.`);
+                    updatePopup(weatherData); // Still show popup, just map might not be centered
+                }
+            })
+            .catch(error => { console.error('Nominatim API error:', error); updatePopup(weatherData); });
+        }
     })
     .catch(error => { displayError(error.message); console.error('Get weather error:', error); });
 }
+
+// --- Activity Forecaster Logic ---
 if (activityButton) {
-    activityButton.addEventListener('click', function() { /* ... (implementation as before) ... */ });
+    activityButton.addEventListener('click', function() {
+        const selectedCheckboxes = document.querySelectorAll('#activity-selector input[name="activity"]:checked');
+        const selectedActivities = Array.from(selectedCheckboxes).map(cb => cb.value);
+        if (activityResultsDiv) activityResultsDiv.innerHTML = ''; 
+        if (activityErrorDiv) { activityErrorDiv.textContent = ''; activityErrorDiv.style.display = 'none'; }
+
+        if (!currentCityName) {
+            if (activityErrorDiv) { activityErrorDiv.textContent = "Please search for a city's weather first."; activityErrorDiv.style.display = 'block'; }
+            return;
+        }
+        if (selectedActivities.length === 0) {
+            if (activityErrorDiv) { activityErrorDiv.textContent = "Please select at least one activity."; activityErrorDiv.style.display = 'block'; }
+            return;
+        }
+        const selectedActivitiesString = selectedActivities.join(',');
+        if (activityResultsDiv) activityResultsDiv.innerHTML = '<p class="loading-text">Fetching advice...</p>';
+        
+        fetch(`/api/perfect_day_forecast?city=${encodeURIComponent(currentCityName)}&activities=${selectedActivitiesString}`)
+        .then(response => {
+            if (!response.ok) { 
+                return response.json().then(errData => { 
+                    throw new Error(errData.error || `Activity forecast error (Status: ${response.status})`); 
+                }).catch(() => { throw new Error(`Activity forecast error (Status: ${response.status})`); });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (activityResultsDiv) activityResultsDiv.innerHTML = '';
+            if (data.error) { 
+                if (activityErrorDiv) { activityErrorDiv.textContent = data.error; activityErrorDiv.style.display = 'block'; }
+                return; 
+            }
+
+            if (data.city && data.current_weather_summary && activityResultsDiv) {
+                const summaryHeader = document.createElement('h3'); 
+                summaryHeader.classList.add('forecast-summary-header'); 
+                summaryHeader.textContent = `Activity Advice for ${data.city}`;
+                activityResultsDiv.appendChild(summaryHeader);
+                const weatherSummaryP = document.createElement('p'); 
+                weatherSummaryP.classList.add('current-weather-summary-note'); 
+                weatherSummaryP.textContent = `Based on current conditions: ${data.current_weather_summary}`;
+                activityResultsDiv.appendChild(weatherSummaryP);
+            }
+
+            if (data.suggestions && Object.keys(data.suggestions).length > 0 && activityResultsDiv) {
+                for (const [activityName, suggestionText] of Object.entries(data.suggestions)) {
+                    const suggestionEl = document.createElement('div'); 
+                    suggestionEl.classList.add('activity-suggestion');
+                    if (suggestionText.toLowerCase().includes('favorable')) { suggestionEl.classList.add('favorable'); }
+                    else if (suggestionText.toLowerCase().includes('unsuitable') || suggestionText.toLowerCase().includes('not ideal') || suggestionText.toLowerCase().includes('too cold') || suggestionText.toLowerCase().includes('too windy') || suggestionText.toLowerCase().includes('too high')) { suggestionEl.classList.add('unfavorable'); }
+                    suggestionEl.innerHTML = `<h4>${activityName}</h4><p>${suggestionText}</p>`; 
+                    activityResultsDiv.appendChild(suggestionEl);
+                }
+            } else if (!data.error && activityResultsDiv) { 
+                const noAdviceP = document.createElement('p'); 
+                noAdviceP.textContent = 'No specific advice for the selected activities based on current conditions, or activities were not recognized.'; 
+                activityResultsDiv.appendChild(noAdviceP); 
+            }
+            if (data.note && activityResultsDiv) { 
+                const noteEl = document.createElement('p'); 
+                noteEl.classList.add('subtle-note', 'forecast-source-note'); 
+                noteEl.textContent = data.note; 
+                activityResultsDiv.appendChild(noteEl); 
+            }
+        })
+        .catch(error => {
+            if (activityResultsDiv) activityResultsDiv.innerHTML = '';
+            if (activityErrorDiv) { 
+                activityErrorDiv.textContent = error.message || "Failed to fetch activity forecast."; 
+                activityErrorDiv.style.display = 'block'; 
+            }
+            console.error("Activity Forecast Fetch Error:", error);
+        });
+    });
 }
-if (healthAdviceButton) {
-    healthAdviceButton.addEventListener('click', function() { /* ... (implementation as before) ... */ });
+
+// --- Personalized Health & Wellness Weather --- 
+if (healthAdviceButton && healthAdviceModal && modalCloseBtn && modalBody && modalDisclaimer && modalCitySummary) {
+    healthAdviceButton.addEventListener('click', function() {
+        const selectedCheckboxes = document.querySelectorAll('#health-concern-selector input[name="health_concern"]:checked');
+        const selectedConcerns = Array.from(selectedCheckboxes).map(cb => cb.value);
+        
+        if (healthErrorDiv) { healthErrorDiv.textContent = ''; healthErrorDiv.style.display = 'none'; }
+        modalBody.innerHTML = ''; 
+        modalDisclaimer.textContent = ''; 
+        modalCitySummary.textContent = '';
+
+        if (!currentCityName) {
+            if (healthErrorDiv) { healthErrorDiv.textContent = "Please search for a city's weather first."; healthErrorDiv.style.display = 'block'; }
+            return;
+        }
+        if (selectedConcerns.length === 0) {
+            if (healthErrorDiv) { healthErrorDiv.textContent = "Please select at least one health concern."; healthErrorDiv.style.display = 'block'; }
+            return;
+        }
+        const selectedConcernsString = selectedConcerns.join(',');
+        const originalButtonText = healthAdviceButton.textContent;
+        healthAdviceButton.textContent = 'Fetching Advice...'; 
+        healthAdviceButton.disabled = true;
+
+        fetch(`/api/health_weather_advice?city=${encodeURIComponent(currentCityName)}&concerns=${selectedConcernsString}`)
+        .then(response => {
+            if (!response.ok) { 
+                return response.json().then(errData => { 
+                    throw new Error(errData.error || `Health advice error (Status: ${response.status})`); 
+                }).catch(() => { throw new Error(`Health advice error (Status: ${response.status})`); });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.error) { 
+                if (healthErrorDiv) { healthErrorDiv.textContent = data.error; healthErrorDiv.style.display = 'block'; }
+                return; 
+            }
+
+            if (data.city) { modalCitySummary.textContent = `Health advice for ${data.city}, based on current conditions.`; }
+            else { modalCitySummary.textContent = `Health advice for ${currentCityName}, based on current conditions.`; }
+
+            if (data.triggered_advice && data.triggered_advice.length > 0) {
+                data.triggered_advice.forEach(advice => { const p = document.createElement('p'); p.textContent = advice; modalBody.appendChild(p); });
+            } else {
+                const p = document.createElement('p'); 
+                p.textContent = "Current weather conditions do not indicate specific additional risks for your selected concerns at this time."; 
+                modalBody.appendChild(p);
+            }
+            if (data.disclaimer) { modalDisclaimer.textContent = data.disclaimer; }
+            healthAdviceModal.classList.add('show');
+        })
+        .catch(error => {
+            if (healthErrorDiv) { 
+                healthErrorDiv.textContent = error.message || "Failed to fetch health advice."; 
+                healthErrorDiv.style.display = 'block'; 
+            }
+            console.error("Health Advice Fetch Error:", error);
+        })
+        .finally(() => {
+            healthAdviceButton.textContent = originalButtonText;
+            healthAdviceButton.disabled = false;
+        });
+    });
+
+    modalCloseBtn.addEventListener('click', function() {
+        healthAdviceModal.classList.remove('show');
+    });
+
+    window.addEventListener('click', function(event) {
+        if (event.target == healthAdviceModal) {
+            healthAdviceModal.classList.remove('show');
+        }
+    });
 }
+
+// Prediction Challenge Submit Button
 if (submitPredictionBtnEl) {
     submitPredictionBtnEl.addEventListener('click', function() {
-        if (!currentCityName || currentCityName === 'No city selected') { displayAppFeedback(predictionFeedbackMsgEl, 'Please search for a city first to make a prediction.', 'error'); return; }
+        if (!currentCityName || currentCityName === 'No city selected') { 
+            displayAppFeedback(predictionFeedbackMsgEl, 'Please search for a city first to make a prediction.', 'error'); 
+            return; 
+        }
         const rawValue = maxTempPredictionInputEl.value.trim();
-        if (rawValue === '') { displayAppFeedback(predictionFeedbackMsgEl, 'Prediction cannot be empty.', 'error'); return; }
+        if (rawValue === '') { 
+            displayAppFeedback(predictionFeedbackMsgEl, 'Prediction cannot be empty.', 'error'); 
+            return; 
+        }
         const predictedTemp = parseFloat(rawValue);
-        if (isNaN(predictedTemp)) { displayAppFeedback(predictionFeedbackMsgEl, 'Invalid number format for temperature.', 'error'); return; }
-        if (predictedTemp < -50 || predictedTemp > 60) { displayAppFeedback(predictionFeedbackMsgEl, 'Temperature must be between -50 and 60°C.', 'error'); return; }
+        if (isNaN(predictedTemp)) { 
+            displayAppFeedback(predictionFeedbackMsgEl, 'Invalid number format for temperature.', 'error'); 
+            return; 
+        }
+        if (predictedTemp < -50 || predictedTemp > 60) { 
+            displayAppFeedback(predictionFeedbackMsgEl, 'Temperature must be between -50 and 60°C.', 'error'); 
+            return; 
+        }
         const tomorrowsDate = getTomorrowsDateString();
         let predictions = JSON.parse(localStorage.getItem('weatherPredictions')) || [];
         const existingPrediction = predictions.find(p => p.city === currentCityName && p.date === tomorrowsDate);
-        if (existingPrediction) { displayAppFeedback(predictionFeedbackMsgEl, `Prediction already made for ${currentCityName} for tomorrow (${tomorrowsDate}).`, 'error'); return; }
+        if (existingPrediction) { 
+            displayAppFeedback(predictionFeedbackMsgEl, `Prediction already made for ${currentCityName} for tomorrow (${tomorrowsDate}).`, 'error'); 
+            return; 
+        }
         const newPrediction = {
             id: Date.now().toString(), city: currentCityName, date: tomorrowsDate,
             predicted_max_temp: predictedTemp, actual_max_temp: null,
@@ -372,121 +639,7 @@ if (submitPredictionBtnEl) {
         predictions.push(newPrediction);
         localStorage.setItem('weatherPredictions', JSON.stringify(predictions));
         displayAppFeedback(predictionFeedbackMsgEl, `Prediction for ${currentCityName} (${predictedTemp}°C for ${tomorrowsDate}) submitted!`, 'success');
-        maxTempPredictionInputEl.value = '';
+        if (maxTempPredictionInputEl) maxTempPredictionInputEl.value = '';
         displayStoredPredictions();
     });
 }
-// Re-pasting the full activityButton and healthAdviceButton event listeners for completeness
-if (activityButton) {
-    activityButton.addEventListener('click', function() {
-        const selectedCheckboxes = document.querySelectorAll('#activity-selector input[name="activity"]:checked');
-        const selectedActivities = Array.from(selectedCheckboxes).map(cb => cb.value);
-        activityResultsDiv.innerHTML = ''; activityErrorDiv.textContent = ''; activityErrorDiv.style.display = 'none';
-        if (!currentCityName) { activityErrorDiv.textContent = "Please search for a city's weather first."; activityErrorDiv.style.display = 'block'; return; }
-        if (selectedActivities.length === 0) { activityErrorDiv.textContent = "Please select at least one activity."; activityErrorDiv.style.display = 'block'; return; }
-        const selectedActivitiesString = selectedActivities.join(',');
-        activityResultsDiv.innerHTML = '<p class="loading-text">Fetching advice...</p>';
-        fetch(`/api/perfect_day_forecast?city=${encodeURIComponent(currentCityName)}&activities=${selectedActivitiesString}`)
-        .then(response => {
-            if (!response.ok) { return response.json().then(errData => { throw new Error(errData.error || `Activity forecast error (Status: ${response.status})`); }); }
-            return response.json();
-        })
-        .then(data => {
-            activityResultsDiv.innerHTML = '';
-            if (data.error) { activityErrorDiv.textContent = data.error; activityErrorDiv.style.display = 'block'; return; }
-            if (data.city && data.current_weather_summary) {
-                const summaryHeader = document.createElement('h3'); summaryHeader.classList.add('forecast-summary-header'); summaryHeader.textContent = `Activity Advice for ${data.city}`; activityResultsDiv.appendChild(summaryHeader);
-                const weatherSummaryP = document.createElement('p'); weatherSummaryP.classList.add('current-weather-summary-note'); weatherSummaryP.textContent = `Based on current conditions: ${data.current_weather_summary}`; activityResultsDiv.appendChild(weatherSummaryP);
-            }
-            if (data.suggestions && Object.keys(data.suggestions).length > 0) {
-                for (const [activityName, suggestionText] of Object.entries(data.suggestions)) {
-                    const suggestionEl = document.createElement('div'); suggestionEl.classList.add('activity-suggestion');
-                    if (suggestionText.toLowerCase().includes('favorable')) { suggestionEl.classList.add('favorable'); }
-                    else if (suggestionText.toLowerCase().includes('unsuitable') || suggestionText.toLowerCase().includes('not ideal') || suggestionText.toLowerCase().includes('too cold') || suggestionText.toLowerCase().includes('too windy') || suggestionText.toLowerCase().includes('too high')) { suggestionEl.classList.add('unfavorable'); }
-                    suggestionEl.innerHTML = `<h4>${activityName}</h4><p>${suggestionText}</p>`; activityResultsDiv.appendChild(suggestionEl);
-                }
-            } else if (!data.error) { const noAdviceP = document.createElement('p'); noAdviceP.textContent = 'No specific advice for the selected activities based on current conditions, or activities were not recognized.'; activityResultsDiv.appendChild(noAdviceP); }
-            if (data.note) { const noteEl = document.createElement('p'); noteEl.classList.add('subtle-note', 'forecast-source-note'); noteEl.textContent = data.note; activityResultsDiv.appendChild(noteEl); }
-        })
-        .catch(error => { activityResultsDiv.innerHTML = ''; activityErrorDiv.textContent = error.message || "Failed to fetch activity forecast."; activityErrorDiv.style.display = 'block'; console.error("Activity Forecast Fetch Error:", error); });
-    });
-}
-if (healthAdviceButton) {
-    healthAdviceButton.addEventListener('click', function() {
-        const selectedCheckboxes = document.querySelectorAll('#health-concern-selector input[name="health_concern"]:checked');
-        const selectedConcerns = Array.from(selectedCheckboxes).map(cb => cb.value);
-        healthErrorDiv.textContent = ''; healthErrorDiv.style.display = 'none';
-        modalBody.innerHTML = ''; modalDisclaimer.textContent = ''; modalCitySummary.textContent = '';
-        if (!currentCityName) { healthErrorDiv.textContent = "Please search for a city's weather first."; healthErrorDiv.style.display = 'block'; return; }
-        if (selectedConcerns.length === 0) { healthErrorDiv.textContent = "Please select at least one health concern."; healthErrorDiv.style.display = 'block'; return; }
-        const selectedConcernsString = selectedConcerns.join(',');
-        const originalButtonText = healthAdviceButton.textContent;
-        healthAdviceButton.textContent = 'Fetching Advice...'; healthAdviceButton.disabled = true;
-        fetch(`/api/health_weather_advice?city=${encodeURIComponent(currentCityName)}&concerns=${selectedConcernsString}`)
-        .then(response => {
-            healthAdviceButton.textContent = originalButtonText; healthAdviceButton.disabled = false;
-            if (!response.ok) { return response.json().then(errData => { throw new Error(errData.error || `Health advice error (Status: ${response.status})`); }); }
-            return response.json();
-        })
-        .then(data => {
-            if (data.error) { healthErrorDiv.textContent = data.error; healthErrorDiv.style.display = 'block'; return; }
-            if (data.city) { modalCitySummary.textContent = `Health advice for ${data.city}, based on current conditions.`; }
-            else { modalCitySummary.textContent = `Health advice for ${currentCityName}, based on current conditions.`; }
-            if (data.triggered_advice && data.triggered_advice.length > 0) {
-                data.triggered_advice.forEach(advice => { const p = document.createElement('p'); p.textContent = advice; modalBody.appendChild(p); });
-            } else { const p = document.createElement('p'); p.textContent = "Current weather conditions do not indicate specific additional risks for your selected concerns at this time."; modalBody.appendChild(p); }
-            if (data.disclaimer) { modalDisclaimer.textContent = data.disclaimer; }
-            if (healthAdviceModal) { healthAdviceModal.classList.add('show'); }
-        })
-        .catch(error => {
-            healthAdviceButton.textContent = originalButtonText; healthAdviceButton.disabled = false;
-            healthErrorDiv.textContent = error.message || "Failed to fetch health advice."; healthErrorDiv.style.display = 'block';
-            console.error("Health Advice Fetch Error:", error);
-        });
-    });
-}The `static/app.js` file has been updated with the client-side logic for the "Weather History On This Day" feature.
-
-**Key JavaScript Changes for Weather History:**
-
-1.  **Global Location Variables:** `currentLatitude` and `currentLongitude` were declared at the top of the script.
-2.  **Generic Feedback Helper `displayAppFeedback`:**
-    *   The existing `displayPredictionFeedback` function was effectively generalized by ensuring `predictionFeedbackMsgEl` is passed as the `element` argument. This function is now used for history feedback as well by passing `historyFeedbackMsgEl`.
-3.  **UI State Management in `updateWeatherDisplay` and `displayError`:**
-    *   `updateWeatherDisplay`:
-        *   Sets `currentLatitude` and `currentLongitude` from `weatherData` (assuming these keys will be provided by the backend's `/api/weather` endpoint).
-        *   Updates `#history-city-name` with the `currentCityName`.
-        *   Enables/disables `#get-history-btn` based on the availability of `currentLatitude` and `currentLongitude`.
-        *   Clears previous content from `#historical-weather-display-area` and `#history-feedback-msg`.
-    *   `displayError`:
-        *   Resets `currentLatitude` and `currentLongitude` to `null`.
-        *   Sets `#history-city-name` to "No city selected" and disables `#get-history-btn`.
-        *   Clears `#historical-weather-display-area` and `#history-feedback-msg`.
-4.  **Event Listener for `#get-history-btn`:**
-    *   **DOM Element References:** Gets references to `historicalDisplayAreaEl` and `historyFeedbackMsgEl`.
-    *   **Validation:** Checks if `currentLatitude` and `currentLongitude` are available; if not, displays an error using `displayAppFeedback`.
-    *   **Date Formatting:** Uses the existing `getFormattedDate` helper to get the current date string.
-    *   **API Call Logic:**
-        *   Clears previous results and feedback from the respective display areas.
-        *   Shows a loading message ("Fetching historical weather...") in `historicalDisplayAreaEl`.
-        *   Disables the button (`#get-history-btn`) and updates its text to "Fetching...".
-        *   Makes a `fetch` GET request to `/api/weather_history_on_this_day` with latitude, longitude, and current date.
-        *   Includes a `.finally` block to re-enable the button and reset its text.
-    *   **Success Path (`.then(data => { ... })`):**
-        *   Clears the loading message.
-        *   If `data.error` (from the backend API), displays it in `historyFeedbackMsgEl` using `displayAppFeedback`.
-        *   If `data.history` is present and contains items:
-            *   Iterates through `data.history`. For each `yearData`:
-                *   Creates a `div.historical-weather-item` and adds the `card` class for styling.
-                *   A title div (`.historical-item-title`) is created for the year and date.
-                *   If `yearData.error` exists (meaning data for that specific year failed to fetch), an error paragraph is added to the item.
-                *   Otherwise, paragraphs for Max Temp, Min Temp, and Precipitation are created and populated, handling "N/A" values.
-                *   The item is appended to `historicalDisplayAreaEl`.
-            *   If, after the loop, no content was rendered (e.g., all years in history had errors), a message "No historical data could be processed..." is shown.
-        *   If `data.history` is empty or not present initially, a message "No historical data found..." is shown.
-    *   **Network/Fetch Error Path (`.catch(error => { ... })`):**
-        *   Clears the loading message.
-        *   Displays a network error message in `historyFeedbackMsgEl` using `displayAppFeedback`.
-5.  **Initial `DOMContentLoaded` Setup:**
-    *   Initializes the history section UI elements (`#history-city-name` to "No city selected", `#get-history-btn` to disabled).
-
-The JavaScript logic for fetching, processing, and displaying the "Weather History On This Day" data, including error handling and UI state updates, is now implemented. The next step will be to add the CSS for the dynamically created `.historical-weather-item` elements.
