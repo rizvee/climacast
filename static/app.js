@@ -77,7 +77,56 @@ function showLoadingState() {
     if(weatherIconEl) weatherIconEl.className = 'fas';
     // Hide AI summary during loading
     hideAiSummary();
+    // Hide Feels Like Data during loading
+    hideFeelsLikeData();
+    // Set default background during loading
+    updateDynamicBackground('default');
 }
+
+// --- Dynamic Background Functions ---
+const ALL_THEME_CLASSES = ['theme-default', 'theme-clear', 'theme-clouds', 'theme-rain', 'theme-snow', 'theme-thunderstorm', 'theme-atmosphere'];
+
+function updateDynamicBackground(weatherMain) {
+    const body = document.body;
+    ALL_THEME_CLASSES.forEach(themeClass => body.classList.remove(themeClass));
+
+    let themeToAdd = 'theme-default'; // Default theme
+
+    switch (weatherMain ? weatherMain.toLowerCase() : 'default') {
+        case 'clear':
+            themeToAdd = 'theme-clear';
+            break;
+        case 'clouds':
+            themeToAdd = 'theme-clouds';
+            break;
+        case 'rain':
+        case 'drizzle':
+            themeToAdd = 'theme-rain';
+            break;
+        case 'snow':
+            themeToAdd = 'theme-snow';
+            break;
+        case 'thunderstorm':
+            themeToAdd = 'theme-thunderstorm';
+            break;
+        case 'mist':
+        case 'smoke':
+        case 'haze':
+        case 'dust':
+        case 'fog':
+        case 'sand':
+        case 'ash':
+        case 'squall':
+        case 'tornado':
+            themeToAdd = 'theme-atmosphere';
+            break;
+        default:
+            // theme-default is already set
+            break;
+    }
+    body.classList.add(themeToAdd);
+}
+// --- End Dynamic Background Functions ---
 
 function getWeatherIconClass(weatherId, weatherMain, description) {
     const desc = description ? description.toLowerCase() : '';
@@ -187,7 +236,13 @@ function updateWeatherDisplay(weatherData) {
     if (predictionFeedbackMsgEl) { displayAppFeedback(predictionFeedbackMsgEl, '', 'clear'); }
     if (historicalDisplayAreaEl) historicalDisplayAreaEl.innerHTML = '';
     if (historyFeedbackMsgEl) { displayAppFeedback(historyFeedbackMsgEl, '', 'clear'); }
-    // AI summary is handled in getWeather or displayError
+
+    // Update dynamic background based on weather data
+    if (weatherData && weatherData.weather_main) {
+        updateDynamicBackground(weatherData.weather_main);
+    } else {
+        updateDynamicBackground('default'); // Fallback if no specific condition
+    }
 }
 
 // --- AI Weather Summary Functions ---
@@ -266,8 +321,66 @@ function displayError(message) {
 
     // Hide AI summary on error
     hideAiSummary();
+    // Hide Feels Like Data on error
+    hideFeelsLikeData();
+    // Reset background to default on error
+    updateDynamicBackground('default');
 }
 
+// --- Feels Like Explanation Functions ---
+async function getFeelsLikeExplanation(promptData) {
+    try {
+        const response = await fetch('/api/explain-feels-like', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(promptData),
+        });
+        if (!response.ok) {
+            const parsedError = await response.json().catch(() => ({})); // Handle non-JSON error response
+            throw new Error(parsedError.error || `Feels like explanation fetch failed: ${response.statusText}`);
+        }
+        const data = await response.json();
+        return data.explanation;
+    } catch (error) {
+        console.error('Error fetching feels like explanation:', error);
+        return null; // Return null on error to allow displaying feels_like temp without explanation
+    }
+}
+
+function displayFeelsLikeData(feelsLikeTemp, explanation) {
+    const feelsLikeTempEl = document.getElementById('feels-like-temperature');
+    const feelsLikeExplEl = document.getElementById('feels-like-explanation');
+
+    if (feelsLikeTempEl) {
+        feelsLikeTempEl.textContent = `Feels like: ${Math.round(feelsLikeTemp)}°C`;
+        feelsLikeTempEl.style.display = 'block';
+    }
+
+    if (feelsLikeExplEl) {
+        if (explanation) {
+            feelsLikeExplEl.textContent = explanation;
+            feelsLikeExplEl.style.display = 'block';
+        } else {
+            feelsLikeExplEl.textContent = '';
+            feelsLikeExplEl.style.display = 'none';
+        }
+    }
+}
+
+function hideFeelsLikeData() {
+    const feelsLikeTempEl = document.getElementById('feels-like-temperature');
+    const feelsLikeExplEl = document.getElementById('feels-like-explanation');
+
+    if (feelsLikeTempEl) {
+        feelsLikeTempEl.textContent = '';
+        feelsLikeTempEl.style.display = 'none';
+    }
+    if (feelsLikeExplEl) {
+        feelsLikeExplEl.textContent = '';
+        feelsLikeExplEl.style.display = 'none';
+    }
+}
+// --- End Feels Like Explanation Functions ---
 
 // --- Daily Prediction Challenge Logic ---
 function displayStoredPredictions() { 
@@ -488,7 +601,7 @@ function getWeather(city) {
         updateWeatherDisplay(weatherData);
 
         // After main weather data is displayed, fetch and display AI summary
-        const prompt = `Based on the following weather data for ${weatherData.city} today:
+        const summaryPrompt = `Based on the following weather data for ${weatherData.city} today:
         - Current Temperature: ${weatherData.temperature}°C
         - Weather Condition: ${weatherData.description} (${weatherData.weather_main})
         - Humidity: ${weatherData.humidity}%
@@ -518,6 +631,42 @@ function getWeather(city) {
                 // Or simply hide it if preferred:
                 // hideAiSummary();
             });
+
+        // Handle "Feels Like" temperature explanation
+        if (weatherData.feels_like !== undefined && weatherData.temperature !== undefined &&
+            (Math.abs(weatherData.temperature - weatherData.feels_like) >= 1 ||
+             (weatherData.wind_speed > 5 && weatherData.feels_like < weatherData.temperature) || // Strong wind making it feel colder
+             (weatherData.humidity > 70 && weatherData.feels_like > weatherData.temperature) )) { // High humidity making it feel warmer
+
+            const feelsLikePromptData = {
+                temp: weatherData.temperature,
+                feels_like: weatherData.feels_like,
+                wind_speed: weatherData.wind_speed,
+                humidity: weatherData.humidity,
+                description: weatherData.description // Pass description for better context
+            };
+
+            (async () => {
+                try {
+                    // Show feels like temp immediately, then explanation when it arrives
+                    displayFeelsLikeData(weatherData.feels_like, "Generating explanation...");
+                    const explanation = await getFeelsLikeExplanation(feelsLikePromptData);
+                    // Update with actual explanation, or clear if null
+                    displayFeelsLikeData(weatherData.feels_like, explanation);
+                } catch (error) {
+                    // Error already logged in getFeelsLikeExplanation
+                    // Still display feels_like temperature, but without explanation or with a generic error
+                    displayFeelsLikeData(weatherData.feels_like, "Could not load explanation.");
+                }
+            })();
+        } else {
+            // If difference is not significant or params missing, just show feels_like if it exists and differs slightly, or hide section
+            if (weatherData.feels_like !== undefined && Math.round(weatherData.temperature) !== Math.round(weatherData.feels_like)) {
+                 displayFeelsLikeData(weatherData.feels_like, null); // Show feels like, no explanation
+            } else {
+                 hideFeelsLikeData(); // Conditions for explanation not met
+            }
+        }
 
         if (weatherData.latitude && weatherData.longitude) {
              map.setView([weatherData.latitude, weatherData.longitude], 10);

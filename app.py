@@ -110,6 +110,7 @@ def get_weather():
         weather_info = {
             'city': data.get('name', original_city_name), # Use original city name if OWM doesn't provide one
             'temperature': data['main']['temp'],
+            'feels_like': data['main']['feels_like'], # Added feels_like temperature
             'description': data['weather'][0]['description'],
             'weather_main': data['weather'][0]['main'],
             'weather_id': data['weather'][0]['id'],
@@ -472,6 +473,85 @@ def generate_summary():
         # Consider mapping specific google.api_core.exceptions to user-friendly messages
         # For now, a generic message:
         return jsonify({'error': 'Failed to generate AI summary due to an internal error.'}), 500
+
+@app.route('/api/explain-feels-like', methods=['POST'])
+def explain_feels_like():
+    gemini_api_key = os.getenv('GEMINI_API_KEY')
+    if not gemini_api_key:
+        app.logger.error("GEMINI_API_KEY not set for feels like explanation.")
+        return jsonify({'error': 'Gemini API key not configured. Please contact administrator.'}), 500
+
+    try:
+        # This assumes genai is already imported and can be configured.
+        # If running in a multi-threaded server, consider if genai.configure is thread-safe
+        # or if the client should be initialized per request or managed differently.
+        # For typical Flask development server, this should be fine.
+        genai.configure(api_key=gemini_api_key)
+    except Exception as e:
+        app.logger.error(f"Failed to configure Gemini API for feels like: {e}", exc_info=True)
+        return jsonify({'error': 'Failed to configure AI explanation service.'}), 500
+
+    request_data = request.get_json()
+    if not request_data:
+        return jsonify({'error': 'No data provided.'}), 400
+
+    required_params = ['temp', 'feels_like', 'wind_speed', 'humidity', 'description']
+    missing_params = [param for param in required_params if param not in request_data or request_data[param] is None]
+
+    if missing_params:
+        return jsonify({'error': f"Missing required weather parameters: {', '.join(missing_params)}."}), 400
+
+    try:
+        temp = float(request_data['temp'])
+        feels_like = float(request_data['feels_like'])
+        wind_speed = float(request_data['wind_speed'])
+        humidity = int(request_data['humidity'])
+        description = request_data['description']
+    except ValueError:
+        return jsonify({'error': 'Invalid data type for weather parameters. Temperature, feels_like, wind_speed should be numbers, and humidity an integer.'}), 400
+
+    # Construct the prompt
+    # Added description to give more context for the explanation
+    prompt = (
+        f"The actual air temperature is {temp}°C, but it feels like {feels_like}°C. "
+        f"The current weather condition is described as '{description}'. "
+        f"The wind speed is {wind_speed} m/s and the humidity is {humidity}%. "
+        f"Briefly explain in one concise sentence why the 'feels like' temperature is different from the actual temperature, "
+        f"focusing on the most significant factor(s) (e.g., wind chill effect if it's colder and windy, "
+        f"or high humidity effect if it's warmer and humid). If the 'feels like' and actual temperature are very close, "
+        f"you can state that they are nearly the same and why. "
+        f"Avoid conversational filler like 'Okay, here's the explanation:'."
+    )
+
+    try:
+        model = genai.GenerativeModel('gemini-pro')
+        response = model.generate_content(prompt)
+
+        explanation_text = ""
+        if response.parts:
+            explanation_text = "".join(part.text for part in response.parts if hasattr(part, 'text'))
+        elif hasattr(response, 'text'):
+            explanation_text = response.text
+        else:
+            app.logger.warning(f"Gemini response for 'feels like' prompt did not contain text. Response: {response}")
+            if response.prompt_feedbacks:
+                for feedback in response.prompt_feedbacks:
+                    app.logger.warning(f"Gemini prompt feedback (feels like): {feedback}")
+                return jsonify({'error': 'Failed to generate explanation due to content restrictions. Please check logs.'}), 500
+            return jsonify({'error': 'Failed to generate explanation, empty response from AI service.'}), 500
+
+        if not explanation_text.strip():
+            app.logger.warning(f"Gemini generated an empty explanation for 'feels like' prompt. Response: {response}")
+            return jsonify({'error': 'AI service generated an empty explanation.'}), 500
+
+        return jsonify({'explanation': explanation_text}), 200
+
+    except AttributeError as ae:
+        app.logger.error(f"Gemini API response attribute error (feels like): {ae}. Response: {response if 'response' in locals() else 'N/A'}", exc_info=True)
+        return jsonify({'error': 'Failed to parse AI explanation response.'}), 500
+    except Exception as e:
+        app.logger.error(f"Gemini API call failed (feels like): {e}", exc_info=True)
+        return jsonify({'error': 'Failed to generate AI explanation due to an internal error.'}), 500
 
 if __name__ == '__main__':
     # Ensure debug is False in production if GEMINI_API_KEY is sensitive
